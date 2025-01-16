@@ -1,0 +1,52 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "DemoNilamPro1",
+      "versionDescription": ""
+    },
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": false,
+      "package": "DemoNilamPro2",
+      "versionDescription": ""
+    },
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": false,
+      "package": "DemoNilamPro3",
+      "versionDescription": ""
+    },
+    {
+      "versionName": "ver 0.4",
+      "versionNumber": "0.4.0.NEXT",
+      "path": "force-app",
+      "default": false,
+      "package": "DemoNilamPro4",
+      "ancestorId": "04tQy00000055dNIAQ",
+      "versionDescription": "Second version with updates"
+    }
+  ],
+  "name": "DemoNilam",
+  "namespace": "DemoPackage2GP",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "62.0",
+  "packageAliases": {
+    "DemoNilamPro1": "0HoQy0000000VTdKAM",
+    "DemoNilamPro2": "0HoQy0000000VVFKA2",
+    "DemoNilamPro3": "0HoQy0000000VWrKAM",
+    "DemoNilamPro3@0.1.0-1": "04tQy00000055NFIAY",
+    "DemoNilamPro4": "0HoQy0000000VYTKA2",
+    "DemoNilamPro4@0.1.0-1": "04tQy00000055ThIAI",
+    "DemoNilamPro4@0.2.0-1": "04tQy00000055a9IAA",
+    "DemoNilamPro4@0.3.0-1": "04tQy00000055dNIAQ",
+    "DemoNilamPro4@0.4.0-1": "04tQy00000057nFIAQ"
+  }
+}

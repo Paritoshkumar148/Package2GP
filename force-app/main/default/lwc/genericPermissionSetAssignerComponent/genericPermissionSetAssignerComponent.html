@@ -1,0 +1,159 @@
+<!--
+  @description       : 
+  @author            : ChangeMeIn@UserSettingsUnder.SFDoc
+  @group             : 
+  @last modified on  : 01-15-2025
+  @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
+-->
+<template> 
+    <template if:false={isLoaded}>
+        <lightning-spinner alternative-text="Loading..."></lightning-spinner>
+    </template>
+
+    <template if:true={isLoaded}>
+    <template if:false={isUserObjAccessible}>
+        <lightning-card style="font-weight: 100;" title="Generic Permission Set Assigner" icon-name="standard:user">
+            <p class="slds-align_absolute-center">
+                <span class="errorScreen">Insufficient Access: Ask your administrator for help or to request access.</span>
+            </p>
+        </lightning-card>
+    </template>
+    <template if:true={isUserObjAccessible}> 
+        <lightning-card>
+            <div class="slds-align_absolute-center pageDivider">
+                <span class="pageHeading">Generic Permission Set Assigner</span>
+            </div><br>
+
+            <!--Source & Target Users-->
+            <div class="mainBox">
+                <div class="slds-grid">
+                    <div class="slds-col slds-p-horizontal_medium">
+                        <lightning-combobox label="Source Users"
+                            value={sourceUserId} placeholder="Select Source User" options={optionsForSource}
+                            onchange={handleSourceChange}></lightning-combobox>
+                    </div>
+    
+                    <!--Active Users-->
+                    <div class="slds-col slds-p-horizontal_medium">
+                        <lightning-combobox label="Target Users"
+                            value={targetUserId} placeholder="Select Active User" options={optionsForTarget}
+                            onchange={handleTargetChange}></lightning-combobox>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <lightning-accordion allow-multiple-sections-open class="slds-m-around_medium" >
+                    <!-- Custom Permission Set Assignment to Target User -->
+    
+                    <lightning-accordion-section label="Custom Permission Set of Source and Target User"  style="font-weight: bold;" name="CustomPermission">
+                        <div class="slds-p-left_medium">
+                            <lightning-input type="checkbox" label="Custom Permissions" checked={customPermission}
+                                onchange={handleCustomPermission}>
+                            </lightning-input>
+                        </div>
+                        <br>
+    
+                        <template if:true={customPermission}>
+                            <div style="font-weight: bold;">
+                                <div class="slds-grid">
+                                    <div class="slds-col slds-p-horizontal_medium;" style="margin-left: 15px;">
+                                        <h1 class="customHeading">
+                                            Current Source User Permissions
+                                        </h1>
+                                        <template for:each={sourceUserAssignPS} for:item="permissionSet">
+                                            <div key={permissionSet.value}>
+                                                <lightning-input style="font-size: small; " type="checkbox"
+                                                    label={permissionSet.label} data-id={permissionSet.value}
+                                                    onchange={handlePermissionSetChangeSource}>
+                                                </lightning-input>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="slds-col slds-p-horizontal_medium" style="margin-left: 25px;">
+                                        <h1 class="customHeading">
+                                            Current Target User Permissions
+                                        </h1>
+                                        <template for:each={targetUserAssignPS} for:item="permissionSetTarget">
+                                            <div key={permissionSetTarget.value}>
+                                                <lightning-input style="font-size: small; " type="checkbox"
+                                                    label={permissionSetTarget.label} data-id={permissionSetTarget.value}
+                                                    onchange={handlePermissionSetChangeTarget}>
+                                                </lightning-input>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </lightning-accordion-section>
+                    <!--Upgrade Permission Set of Target User-->
+    
+                    <lightning-accordion-section label="Upgrade Permission Set of Source User" style="font-weight: bold;" name="UpgradePermission">
+                        <div class="slds-p-left_medium">
+                            <lightning-input type="checkbox" label="Upgrade Permissions" checked={upgradePermission}
+                                onchange={handleUpgradePermission}>
+                            </lightning-input>
+                        </div>
+                        <br>
+                        <template if:true={upgradePermission}>
+                            <div class="slds-grid">
+                                <div class="slds-col slds-p-horizontal_medium;" style="margin-left: 15px;">
+                                    <h1 class="customHeading"> 
+                                        Source User Assigned Permissions
+                                    </h1>
+                                    <template for:each={sourceUserAssignPS} for:item="permissionSet">
+                                        <div key={permissionSet.value}>
+                                            <lightning-input style="font-size: small; " type="checkbox"
+                                                label={permissionSet.label} data-id={permissionSet.value}
+                                                onchange={handlePermissionSetChangeUpgradeSource}>
+                                            </lightning-input>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div> 
+                        </template>
+                    </lightning-accordion-section>
+                    <!--Clone Permission Set of Target User-->
+                    <lightning-accordion-section label="Clone Permission Set of Source User" style="font-weight: bold;" name="ClonePermission">
+                        <div class="slds-p-left_medium">
+                            <lightning-input type="checkbox" label="Clone Permissions" checked={clonePermission} onchange={handleClonePermission}>
+                            </lightning-input>
+                        </div><br>
+                        <template if:true={clonePermission}>
+                            <div class="slds-grid">
+                                <div class="slds-col slds-p-horizontal_medium;" style="margin-left: 15px;">
+                                    <h1 class="customHeading">
+                                        Source User Assigned Permissions
+                                    </h1>
+                                    <template for:each={sourceUserAssignPS} for:item="permissionSet">
+                                        <div key={permissionSet.value}>
+                                            <lightning-input style="font-size: small; " type="checkbox"
+                                                label={permissionSet.label} data-id={permissionSet.value}
+                                                onchange={handlePermissionSetChangeCloneSource}>
+                                            </lightning-input>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </lightning-accordion-section>
+                </lightning-accordion>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="slds-p-left_medium" slot="footer">
+                <!-- Cancel Button  -->
+                <lightning-button class="slds-p-horizontal_large" label="Cancel" style="font-size:medium;"
+                    variant="brand-outline" onclick={handleCancel}>
+                </lightning-button>
+
+                <!-- Save Buttons -->
+                <lightning-button class="slds-p-horizontal_large" label="Save"
+                    style="margin-left:-2rem; font-size:large;" variant="brand" onclick={handleSave}>
+                </lightning-button>
+            </div>
+        </lightning-card>
+    </template>
+</template>
+</template>
