@@ -70,6 +70,7 @@ export default class GenericPermissionSetAssignerComponent extends LightningElem
 
    connectedCallback() {
     this.checkUserObjectAccessibility();
+    console.log('Hello Connected');
        
     }
 
