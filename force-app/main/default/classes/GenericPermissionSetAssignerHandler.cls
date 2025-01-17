@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
  * @group             : 
- * @last modified on  : 01-15-2025
+ * @last modified on  : 01-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 @SuppressWarnings('PMD')
@@ -18,6 +18,7 @@ public with sharing class GenericPermissionSetAssignerHandler {
         if(Schema.sObjectType.User.isAccessible() && Schema.sObjectType.PermissionSetAssignment.isAccessible()){
             isUserAndPermissionSetObjAccess = true;
         }
+        System.debug('Call GenericPermissionSetAssignerHandler');
         return isUserAndPermissionSetObjAccess;
     }
 /**
