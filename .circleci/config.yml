@@ -1,31 +1,57 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
-jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/executor-intro/ & https://circleci.com/docs/configuration-reference/#executor-job
+executors:
+  salesforce-executor:
     docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
+      - image: circleci/node:16
+    working_directory: ~/project
 
-    # Add steps to the job
-    # See: https://circleci.com/docs/jobs-steps/#steps-overview & https://circleci.com/docs/configuration-reference/#steps
+jobs:
+  authorize_dev_hub:
+    executor: salesforce-executor
     steps:
-      # Checkout the code as the first step.
       - checkout
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global sfdx-cli
+            sfdx --version
+      - run:
+          name: "Authenticate Dev Hub"
+          command: |
+            echo $DEVHUB_SFDX_URL > sfdx_auth.txt
+            sfdx auth:sfdxurl:store --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/workflows/ & https://circleci.com/docs/configuration-reference/#workflows
+  create_scratch_org:
+    executor: salesforce-executor
+    steps:
+      - checkout
+      - run:
+          name: "Create Scratch Org"
+          command: |
+            sfdx force:org:create -f config/project-scratch-def.json -a CircleCI_Scratch -d 1 -s
+
+  deploy_and_test:
+    executor: salesforce-executor
+    steps:
+      - checkout
+      - run:
+          name: "Deploy Metadata"
+          command: |
+            sfdx force:source:push -u CircleCI_Scratch
+      - run:
+          name: "Run Apex Tests"
+          command: |
+            sfdx force:apex:test:run -u CircleCI_Scratch -r human
+
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  version: 2
+  deploy_and_test:
     jobs:
-      - say-hello
+      - authorize_dev_hub
+      - create_scratch_org:
+          requires:
+            - authorize_dev_hub
+      - deploy_and_test:
+          requires:
+            - create_scratch_org
