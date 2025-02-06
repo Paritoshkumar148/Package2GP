@@ -14,7 +14,11 @@ jobs:
       - run:
           name: "Install Salesforce CLI"
           command: |
-            npm install --global sfdx-cli
+            mkdir ~/sfdx
+            curl -s https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar xJ -C ~/sfdx
+            ~/sfdx/install
+            echo 'export PATH=~/sfdx/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
             sfdx --version
       - run:
           name: "Authenticate Dev Hub"
@@ -29,6 +33,7 @@ jobs:
       - run:
           name: "Create Scratch Org"
           command: |
+            source $BASH_ENV
             sfdx force:org:create -f config/project-scratch-def.json -a CircleCI_Scratch -d 1 -s
 
   deploy_and_test:
@@ -38,10 +43,12 @@ jobs:
       - run:
           name: "Deploy Metadata"
           command: |
+            source $BASH_ENV
             sfdx force:source:push -u CircleCI_Scratch
       - run:
           name: "Run Apex Tests"
           command: |
+            source $BASH_ENV
             sfdx force:apex:test:run -u CircleCI_Scratch -r human
 
 workflows:
