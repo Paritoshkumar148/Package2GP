@@ -14,8 +14,9 @@ jobs:
       - run:
           name: "Install Salesforce CLI"
           command: |
+            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-x64.tar.xz -o sfdx.tar.xz
             mkdir ~/sfdx
-            curl -s https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar xJ -C ~/sfdx
+            tar -xJf sfdx.tar.xz -C ~/sfdx --strip-components 1
             ~/sfdx/install
             echo 'export PATH=~/sfdx/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
