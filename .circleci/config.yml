@@ -41,7 +41,7 @@ jobs:
               exit 1
             fi
 
-            # Convert SF_JWT_KEY to a valid key file
+            # Convert SF_JWT_KEY to a valid key file1234
             echo -e "$SF_JWT_KEY" | sed 's/\\n/\n/g' > server.key
             chmod 600 server.key  # Secure key file
 
