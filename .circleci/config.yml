@@ -12,12 +12,9 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Salesforce CLI (via tarball)
+          name: Install Salesforce CLI (via NPM)
           command: |
-            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar -xJf -
-            ./sfdx/install
-            echo 'export PATH=~/sfdx/bin:$PATH' >> $BASH_ENV
-            source $BASH_ENV
+            npm install --location=global sfdx-cli
       - run:
           name: Verify Salesforce CLI Installation
           command: sfdx --version
