@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: circleci/node:18
+      - image: cimg/node:18.17  # ✅ Fixed image
     working_directory: ~/project
 
 jobs:
@@ -12,7 +12,6 @@ jobs:
     steps:
       - checkout
       
-      # Install Salesforce CLI (Recommended official method)
       - run:
           name: Install Salesforce CLI
           command: |
@@ -20,45 +19,60 @@ jobs:
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
             source $BASH_ENV
 
-      # Verify installation
-      - run: sfdx --version
-      
-      # Authenticate with Salesforce using JWT
       - run:
-          name: Authenticate with Salesforce
-          command: |
-            echo $SFDC_SERVER_KEY | base64 --decode > server.key
-            sfdx auth:jwt:grant --client-id $SFDC_CONSUMER_KEY \
-                                --username $SFDC_USERNAME \
-                                --jwt-key-file server.key \
-                                --instance-url https://login.salesforce.com
+          name: Verify Salesforce CLI
+          command: sfdx --version
 
-  deploy:
+  authenticate:
     executor: salesforce-executor
     steps:
       - checkout
-
-      # Authenticate again for deployment
       - run:
           name: Authenticate with Salesforce
           command: |
-            echo $SFDC_SERVER_KEY | base64 --decode > server.key
-            sfdx auth:jwt:grant --client-id $SFDC_CONSUMER_KEY \
-                                --username $SFDC_USERNAME \
-                                --jwt-key-file server.key \
-                                --instance-url https://login.salesforce.com
+            echo $SFDC_JWT_KEY | base64 --decode > server.key
+            sfdx auth:jwt:grant --client-id $SFDC_CONSUMER_KEY --jwt-key-file server.key --username $SFDC_USERNAME --instance-url https://login.salesforce.com
+            sfdx force:org:list
 
-      # Deploy metadata
+  create-scratch-org:
+    executor: salesforce-executor
+    steps:
+      - checkout
       - run:
-          name: Deploy Salesforce Metadata
-          command: |
-            sfdx force:source:deploy -p force-app --wait 10
+          name: Create Scratch Org
+          command: sfdx force:org:create -f config/project-scratch-def.json -a CircleCIScratchOrg -d 1 -s
+      
+      - run:
+          name: Push Source Code
+          command: sfdx force:source:push
+      
+      - run:
+          name: Run Apex Tests
+          command: sfdx force:apex:test:run --resultformat human --codecoverage --wait 10
+      
+      - run:
+          name: Delete Scratch Org
+          command: sfdx force:org:delete -u CircleCIScratchOrg -p
+
+  deploy-to-prod:
+    executor: salesforce-executor
+    steps:
+      - checkout
+      - run:
+          name: Deploy to Production
+          command: sfdx force:source:deploy -x manifest/package.xml -u $SFDC_USERNAME --wait 10
 
 workflows:
   version: 2
   deploy:
     jobs:
       - setup
-      - deploy:
+      - authenticate:
           requires:
             - setup
+      - create-scratch-org:
+          requires:
+            - authenticate
+      - deploy-to-prod:
+          requires:
+            - create-scratch-org
