@@ -29,19 +29,40 @@ jobs:
             sf --version  # Verify installation
 
       - run:
-          name: Authenticate Salesforce Org
+          name: Authenticate Salesforce Org using JWT OAuth
           command: |
             echo "Authenticating Salesforce Org..."
-            echo $SF_AUTH_URL > sfdx_auth_url.txt
             export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
-            sf org login sfdx-url --set-default --alias myOrg --sfdx-url-file sfdx_auth_url.txt
+            sf org login jwt --client-id $SF_CONSUMER_KEY --jwt-key-file assets/server.key --username $SF_USERNAME --instance-url $SF_INSTANCE_URL --set-default --alias myOrg
+            echo "✅ Authentication successful!"
 
       - run:
-          name: Deploy to Salesforce
+          name: Create Scratch Org & Deploy Metadata
           command: |
-            echo "Deploying to Salesforce..."
+            echo "Creating Scratch Org..."
             export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
-            sf project deploy start --manifest package.xml
+            sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 7 --alias scratchOrg
+            echo "✅ Scratch org created!"
+
+            echo "Deploying metadata to scratch org..."
+            sf project deploy start --target-org scratchOrg
+            echo "✅ Metadata deployed!"
+
+      - run:
+          name: Run Apex Tests with Code Coverage
+          command: |
+            echo "Running Apex tests..."
+            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
+            sf apex run test --target-org scratchOrg --result-format human --code-coverage --wait 10
+            echo "✅ Apex tests completed!"
+
+      - run:
+          name: Deploy to Production Org
+          command: |
+            echo "Deploying to Production..."
+            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
+            sf project deploy start --target-org myOrg --manifest package.xml --test-level RunLocalTests
+            echo "✅ Deployment to Production completed!"
 
 workflows:
   version: 2
