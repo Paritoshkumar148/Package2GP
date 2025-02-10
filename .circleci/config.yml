@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # ✅ Use a stable Node.js image
+      - image: cimg/node:18.17
     working_directory: ~/project
 
 jobs:
@@ -17,18 +17,22 @@ jobs:
           command: npm install
 
       - run:
-          name: Install Salesforce CLI
+          name: Install Salesforce CLI (Fix Permissions)
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            npm install -g @salesforce/cli
-            echo "✅ Salesforce CLI installed successfully!"
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=~/.npm-global/bin:$PATH
+            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+            npm install -g @salesforce/cli || (echo "❌ Salesforce CLI installation failed!" && exit 1)
             sf --version
+            echo "✅ Salesforce CLI installed successfully!"
 
       - run:
           name: Authenticate Dev Hub
           command: |
             echo "🔐 Authenticating Dev Hub..."
-            rm -f sfdx_auth_url.txt  # ✅ Remove old auth file (if exists)
+            rm -f sfdx_auth_url.txt
             echo "$SF_AUTH_URL" > sfdx_auth_url.txt
             sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub || (echo "❌ Dev Hub authentication failed!" && exit 1)
             echo "✅ Dev Hub authentication successful!"
