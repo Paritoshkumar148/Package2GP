@@ -11,12 +11,13 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
-      
+
       - run:
           name: Install Salesforce CLI
           command: |
-            npm install --global sfdx-cli
-            echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> $BASH_ENV
+            mkdir ~/sfdx
+            curl -sSL https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar -xJ -C ~/sfdx --strip-components=1
+            echo 'export PATH="$HOME/sfdx/bin:$PATH"' >> $BASH_ENV
             source $BASH_ENV
 
       - run:
