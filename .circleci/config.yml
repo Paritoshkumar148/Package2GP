@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # Use latest compatible Node.js version
+      - image: cimg/node:18.17 # Correct Node.js version
     working_directory: ~/project
 
 jobs:
@@ -20,13 +20,12 @@ jobs:
           name: Install Salesforce CLI
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            mkdir -p $HOME/.npm-global
-            npm config set prefix $HOME/.npm-global
-            export PATH=$HOME/.npm-global/bin:$PATH
             npm install -g @salesforce/cli
-            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $HOME/.bashrc
+            export PATH=$(npm bin -g):$PATH
+            echo 'export PATH=$(npm bin -g):$PATH' >> $HOME/.bashrc
+            source $HOME/.bashrc
+            sf --version || (echo "❌ SF CLI installation failed!" && exit 1)
             echo "✅ Salesforce CLI installed successfully!"
-            sf --version  # Verify installation
 
       - run:
           name: Authenticate Dev Hub using SFDX Auth URL
@@ -39,18 +38,6 @@ jobs:
             echo "$SF_AUTH_URL" > sfdx_auth_url.txt
             sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub
             echo "✅ Dev Hub authentication successful!"
-
-      - run:
-          name: Authenticate Target Org
-          command: |
-            echo "🔐 Authenticating Target Org..."
-            if [[ -z "$SF_TARGET_AUTH_URL" ]]; then
-              echo "❌ ERROR: SF_TARGET_AUTH_URL environment variable is missing!"
-              exit 1
-            fi
-            echo "$SF_TARGET_AUTH_URL" > target_auth.txt
-            sf org login sfdx-url -f target_auth.txt --set-default --alias myOrg
-            echo "✅ Target Org authentication successful!"
 
       - run:
           name: Create Scratch Org & Deploy Metadata
@@ -74,7 +61,13 @@ jobs:
           name: Deploy to Production Org
           command: |
             echo "🚀 Deploying to Production..."
-            sf project deploy start --target-org myOrg --manifest package.xml --test-level RunLocalTests
+            if [[ -z "$SF_INSTANCE_URL" || -z "$SF_CONSUMER_KEY" || -z "$SF_USERNAME" || -z "$SF_JWT_KEY" ]]; then
+              echo "❌ ERROR: One or more required environment variables are missing!"
+              exit 1
+            fi
+            echo "$SF_JWT_KEY" > server.key
+            sf auth jwt grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --instance-url $SF_INSTANCE_URL --set-default
+            sf project deploy start --target-org $SF_USERNAME --manifest package.xml --test-level RunLocalTests
             echo "✅ Deployment to Production completed!"
 
 workflows:
