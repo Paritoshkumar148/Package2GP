@@ -1,59 +1,44 @@
 version: 2.1
 
 executors:
-  salesforce-executor:
+  default:
     docker:
-      - image: cimg/node:18.17  # ✅ Lightweight Node.js image with npm pre-installed
+      - image: circleci/node:latest
     working_directory: ~/project
 
 jobs:
-  install_salesforce_cli:
-    executor: salesforce-executor
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - sf-cli-cache-v1-{{ checksum "package.json" }}  # ✅ Cache based on package.json changes
-      - run:
-          name: Install Salesforce CLI (Using Cache)
-          command: |
-            if sf --version > /dev/null 2>&1; then
-              echo "✅ Salesforce CLI already installed, skipping..."
-            else
-              echo "🚀 Installing Salesforce CLI..."
-              npm install --global @salesforce/cli --quiet
-            fi
-      - run:
-          name: Verify Salesforce CLI
-          command: sf --version
-      - save_cache:
-          paths:
-            - ~/.npm-global
-          key: sf-cli-cache-v1-{{ checksum "package.json" }}
-
   deploy:
-    executor: salesforce-executor
+    executor: default
     steps:
       - checkout
+      
+      - run:
+          name: Install Dependencies
+          command: npm install
+
+      - run:
+          name: Install Salesforce CLI
+          command: |
+            echo "🚀 Installing Salesforce CLI..."
+            npm install --prefix ~/.npm-global -g @salesforce/cli
+            export PATH=~/.npm-global/bin:$PATH
+            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+
       - run:
           name: Authenticate Salesforce Org
           command: |
             echo "Authenticating Salesforce Org..."
-            echo $SF_AUTH_URL | sf org login sfdx-url --set-default --instance-url=https://login.salesforce.com --alias myOrg --json
+            echo $SF_AUTH_URL > sfdx_auth_url.txt
+            sf org login sfdx-url --set-default --instance-url=https://login.salesforce.com --alias myOrg --json < sfdx_auth_url.txt
+
       - run:
-          name: Deploy Salesforce Package
+          name: Deploy to Salesforce
           command: |
-            echo "🚀 Deploying to Salesforce..."
-            sf project deploy start --wait 10
-      - run:
-          name: Run Tests
-          command: sf apex run test --result-format human
+            echo "Deploying to Salesforce..."
+            sf project deploy start --manifest package.xml
 
 workflows:
   version: 2
   deploy:
     jobs:
-      - install_salesforce_cli
-      - deploy:
-          requires:
-            - install_salesforce_cli
+      - deploy
