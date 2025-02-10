@@ -41,15 +41,16 @@ jobs:
               exit 1
             fi
 
-            # Save private key to file
-            echo "$SF_JWT_KEY" > assets/server.key
+            # Convert SF_JWT_KEY to a valid key file
+            echo -e "$SF_JWT_KEY" | sed 's/\\n/\n/g' > server.key
+            chmod 600 server.key  # Secure key file
 
             # Authenticate with Salesforce
             sf org login jwt \
-              --client-id $SF_CONSUMER_KEY \
-              --jwt-key-file assets/server.key \
-              --username $SF_USERNAME \
-              --instance-url $SF_INSTANCE_URL \
+              --client-id "$SF_CONSUMER_KEY" \
+              --jwt-key-file server.key \
+              --username "$SF_USERNAME" \
+              --instance-url "$SF_INSTANCE_URL" \
               --set-default \
               --alias myOrg
 
@@ -60,7 +61,7 @@ jobs:
           command: |
             echo "📌 Creating Scratch Org..."
             export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
-            sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 7 --alias scratchOrg
+            sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias scratchOrg --duration-days 7
             echo "✅ Scratch org created!"
 
             echo "🚀 Deploying metadata to scratch org..."
