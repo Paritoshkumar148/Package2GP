@@ -7,22 +7,24 @@ executors:
     working_directory: ~/project
 
 jobs:
-  setup:
+  install_salesforce_cli:
     executor: salesforce-executor
     steps:
       - checkout
-
+      - run:
+          name: Install Dependencies
+          command: sudo apt update && sudo apt install -y bash
       - run:
           name: Install Salesforce CLI
           command: |
-            mkdir ~/sfdx
-            curl -sSL https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar -xJ -C ~/sfdx --strip-components=1
-            echo 'export PATH="$HOME/sfdx/bin:$PATH"' >> $BASH_ENV
+            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/install.sh | bash
+            echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
-
       - run:
-          name: Verify Salesforce CLI
-          command: sfdx --version
+          name: Verify Installation
+          command: |
+            sfdx --version
+            sfdx plugins --core
 
   authenticate:
     executor: salesforce-executor
