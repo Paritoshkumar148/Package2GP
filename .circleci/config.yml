@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # Correct Node.js image
+      - image: cimg/node:18.17 # Use latest compatible Node.js version
     working_directory: ~/project
 
 jobs:
@@ -32,22 +32,30 @@ jobs:
           name: Authenticate Dev Hub using SFDX Auth URL
           command: |
             echo "🔐 Authenticating Dev Hub..."
-            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
-
             if [[ -z "$SF_AUTH_URL" ]]; then
               echo "❌ ERROR: SF_AUTH_URL environment variable is missing!"
               exit 1
             fi
-
             echo "$SF_AUTH_URL" > sfdx_auth_url.txt
             sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub
             echo "✅ Dev Hub authentication successful!"
 
       - run:
+          name: Authenticate Target Org
+          command: |
+            echo "🔐 Authenticating Target Org..."
+            if [[ -z "$SF_TARGET_AUTH_URL" ]]; then
+              echo "❌ ERROR: SF_TARGET_AUTH_URL environment variable is missing!"
+              exit 1
+            fi
+            echo "$SF_TARGET_AUTH_URL" > target_auth.txt
+            sf org login sfdx-url -f target_auth.txt --set-default --alias myOrg
+            echo "✅ Target Org authentication successful!"
+
+      - run:
           name: Create Scratch Org & Deploy Metadata
           command: |
             echo "📌 Creating Scratch Org..."
-            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
             sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias scratchOrg --duration-days 7
             echo "✅ Scratch org created!"
 
@@ -59,7 +67,6 @@ jobs:
           name: Run Apex Tests with Code Coverage
           command: |
             echo "🧪 Running Apex tests..."
-            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
             sf apex run test --target-org scratchOrg --result-format human --code-coverage --wait 10
             echo "✅ Apex tests completed!"
 
@@ -67,7 +74,6 @@ jobs:
           name: Deploy to Production Org
           command: |
             echo "🚀 Deploying to Production..."
-            export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
             sf project deploy start --target-org myOrg --manifest package.xml --test-level RunLocalTests
             echo "✅ Deployment to Production completed!"
 
