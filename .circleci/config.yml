@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: cimg/node:18.17  # ✅ Fixed image
+      - image: cimg/node:18.17  # ✅ Uses Node.js environment
     working_directory: ~/project
 
 jobs:
@@ -15,8 +15,8 @@ jobs:
       - run:
           name: Install Salesforce CLI
           command: |
-            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/install.sh | bash
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
+            npm install --global sfdx-cli
+            echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> $BASH_ENV
             source $BASH_ENV
 
       - run:
