@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # Correct Node.js image
+      - image: cimg/node:18.17-browsers # Updated Node.js image
     working_directory: ~/project
 
 jobs:
@@ -20,16 +20,23 @@ jobs:
           name: Install Salesforce CLI
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            npm install -g @salesforce/cli --unsafe-perm=true --prefix=$HOME/.npm-global
-            export PATH=$HOME/.npm-global/bin:$PATH
-            sf --version  # Verify installation
+            npm install -g @salesforce/cli --unsafe-perm=true
+            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            sf --version || echo "Salesforce CLI installation failed!"
 
       - run:
           name: Authenticate Salesforce Org
           command: |
             echo "Authenticating Salesforce Org..."
             echo $SF_AUTH_URL > sfdx_auth_url.txt
-            sf org login sfdx-url --set-default --alias myOrg --sfdx-url-file sfdx_auth_url.txt
+            if command -v sf &> /dev/null
+            then
+              sf org login sfdx-url --set-default --alias myOrg --sfdx-url-file sfdx_auth_url.txt
+            else
+              echo "❌ Salesforce CLI not found!"
+              exit 1
+            fi
 
       - run:
           name: Deploy to Salesforce
