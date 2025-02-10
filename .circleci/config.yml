@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: cimg/node:18.17  # ✅ Uses Node.js environment
+      - image: cimg/node:18.17  # ✅ Uses Node.js 18
     working_directory: ~/project
 
 jobs:
@@ -12,19 +12,15 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Dependencies
-          command: sudo apt update && sudo apt install -y bash
-      - run:
-          name: Install Salesforce CLI via NPM
+          name: Install Salesforce CLI (via tarball)
           command: |
-            npm install --global sfdx-cli
-            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $BASH_ENV
+            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz | tar -xJf -
+            ./sfdx/install
+            echo 'export PATH=~/sfdx/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
       - run:
-          name: Verify Installation
-          command: |
-            sfdx --version
-            sfdx plugins --core
+          name: Verify Salesforce CLI Installation
+          command: sfdx --version
 
   authenticate:
     executor: salesforce-executor
