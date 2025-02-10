@@ -15,10 +15,10 @@ jobs:
           name: Install Dependencies
           command: sudo apt update && sudo apt install -y bash
       - run:
-          name: Install Salesforce CLI
+          name: Install Salesforce CLI via NPM
           command: |
-            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/install.sh | bash
-            echo 'export PATH=$HOME/.local/bin:$PATH' >> $BASH_ENV
+            npm install --global sfdx-cli
+            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
       - run:
           name: Verify Installation
@@ -44,15 +44,12 @@ jobs:
       - run:
           name: Create Scratch Org
           command: sfdx force:org:create -f config/project-scratch-def.json -a CircleCIScratchOrg -d 1 -s
-      
       - run:
           name: Push Source Code
           command: sfdx force:source:push
-      
       - run:
           name: Run Apex Tests
           command: sfdx force:apex:test:run --resultformat human --codecoverage --wait 10
-      
       - run:
           name: Delete Scratch Org
           command: sfdx force:org:delete -u CircleCIScratchOrg -p
