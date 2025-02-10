@@ -29,32 +29,19 @@ jobs:
             sf --version  # Verify installation
 
       - run:
-          name: Authenticate Salesforce Org using JWT OAuth
+          name: Authenticate Dev Hub using SFDX Auth URL
           command: |
-            echo "🔐 Authenticating Salesforce Org..."
+            echo "🔐 Authenticating Dev Hub..."
             export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
 
-            # Validate required environment variables 1234562134561234562345
-            if [[ -z "$SF_CONSUMER_KEY" || -z "$SF_USERNAME" || -z "$SF_INSTANCE_URL" || -z "$SF_JWT_KEY" ]]; then
-              echo "❌ ERROR: One or more required environment variables are missing!"
-              echo "Required: SF_CONSUMER_KEY, SF_USERNAME, SF_INSTANCE_URL, SF_JWT_KEY"
+            if [[ -z "$SF_AUTH_URL" ]]; then
+              echo "❌ ERROR: SF_AUTH_URL environment variable is missing!"
               exit 1
             fi
 
-            # Convert SF_JWT_KEY to a valid key file1234
-            echo -e "$SF_JWT_KEY" | sed 's/\\n/\n/g' > server.key
-            chmod 600 server.key  # Secure key file
-
-            # Authenticate with Salesforce
-            sf org login jwt \
-              --client-id "$SF_CONSUMER_KEY" \
-              --jwt-key-file server.key \
-              --username "$SF_USERNAME" \
-              --instance-url "$SF_INSTANCE_URL" \
-              --set-default \
-              --alias myOrg
-
-            echo "✅ Authentication successful!"
+            echo "$SF_AUTH_URL" > sfdx_auth_url.txt
+            sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub
+            echo "✅ Dev Hub authentication successful!"
 
       - run:
           name: Create Scratch Org & Deploy Metadata
