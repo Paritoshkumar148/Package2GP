@@ -1,46 +1,64 @@
 version: 2.1
 
 executors:
-  sf_executor:
+  salesforce-executor:
     docker:
-      - image: cimg/node:18.16
+      - image: circleci/node:18
     working_directory: ~/project
 
 jobs:
-  auth:
-    executor: sf_executor
+  setup:
+    executor: salesforce-executor
     steps:
       - checkout
+      
+      # Install Salesforce CLI (Recommended official method)
       - run:
           name: Install Salesforce CLI
-          command: npm install --global sfdx-cli
+          command: |
+            curl -fsSL https://developer.salesforce.com/media/salesforce-cli/install.sh | bash
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+
+      # Verify installation
+      - run: sfdx --version
+      
+      # Authenticate with Salesforce using JWT
       - run:
           name: Authenticate with Salesforce
           command: |
-            echo "$SF_JWT_SECRET" > server.key
-            sfdx auth:jwt:grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --set-default-dev-hub
+            echo $SFDC_SERVER_KEY | base64 --decode > server.key
+            sfdx auth:jwt:grant --client-id $SFDC_CONSUMER_KEY \
+                                --username $SFDC_USERNAME \
+                                --jwt-key-file server.key \
+                                --instance-url https://login.salesforce.com
 
   deploy:
-    executor: sf_executor
+    executor: salesforce-executor
     steps:
       - checkout
-      - run:
-          name: Install Salesforce CLI
-          command: npm install --global sfdx-cli
+
+      # Authenticate again for deployment
       - run:
           name: Authenticate with Salesforce
           command: |
-            echo "$SF_JWT_SECRET" > server.key
-            sfdx auth:jwt:grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --set-default-dev-hub
+            echo $SFDC_SERVER_KEY | base64 --decode > server.key
+            sfdx auth:jwt:grant --client-id $SFDC_CONSUMER_KEY \
+                                --username $SFDC_USERNAME \
+                                --jwt-key-file server.key \
+                                --instance-url https://login.salesforce.com
+
+      # Deploy metadata
       - run:
-          name: Deploy to Salesforce
-          command: sfdx force:source:deploy -p force-app -u $SF_USERNAME --json --loglevel fatal
+          name: Deploy Salesforce Metadata
+          command: |
+            sfdx force:source:deploy -p force-app --wait 10
 
 workflows:
   version: 2
-  deploy_flow:
+  deploy:
     jobs:
-      - auth
+      - setup
       - deploy:
           requires:
-            - auth
+            - setup
