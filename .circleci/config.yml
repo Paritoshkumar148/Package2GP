@@ -69,10 +69,10 @@ workflows:
   version: 2
   deploy:
     jobs:
-      - setup
+      - install_salesforce_cli
       - authenticate:
           requires:
-            - setup
+            - install_salesforce_cli
       - create-scratch-org:
           requires:
             - authenticate
