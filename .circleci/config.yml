@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # Correct Node.js version
+      - image: cimg/node:18.17 # Correct Node.js image
     working_directory: ~/project
 
 jobs:
@@ -20,10 +20,12 @@ jobs:
           name: Install Salesforce CLI
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            npm install -g @salesforce/cli
-            export PATH=$(npm bin -g):$PATH
-            echo 'export PATH=$(npm bin -g):$PATH' >> $HOME/.bashrc
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=~/.npm-global/bin:$PATH
+            echo 'export PATH=~/.npm-global/bin:$PATH' >> $HOME/.bashrc
             source $HOME/.bashrc
+            npm install -g @salesforce/cli
             sf --version || (echo "❌ SF CLI installation failed!" && exit 1)
             echo "✅ Salesforce CLI installed successfully!"
 
@@ -31,10 +33,13 @@ jobs:
           name: Authenticate Dev Hub using SFDX Auth URL
           command: |
             echo "🔐 Authenticating Dev Hub..."
+            source $HOME/.bashrc  # Ensure PATH is updated
+
             if [[ -z "$SF_AUTH_URL" ]]; then
               echo "❌ ERROR: SF_AUTH_URL environment variable is missing!"
               exit 1
             fi
+
             echo "$SF_AUTH_URL" > sfdx_auth_url.txt
             sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub
             echo "✅ Dev Hub authentication successful!"
@@ -43,6 +48,7 @@ jobs:
           name: Create Scratch Org & Deploy Metadata
           command: |
             echo "📌 Creating Scratch Org..."
+            source $HOME/.bashrc
             sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias scratchOrg --duration-days 7
             echo "✅ Scratch org created!"
 
@@ -54,6 +60,7 @@ jobs:
           name: Run Apex Tests with Code Coverage
           command: |
             echo "🧪 Running Apex tests..."
+            source $HOME/.bashrc
             sf apex run test --target-org scratchOrg --result-format human --code-coverage --wait 10
             echo "✅ Apex tests completed!"
 
@@ -61,13 +68,8 @@ jobs:
           name: Deploy to Production Org
           command: |
             echo "🚀 Deploying to Production..."
-            if [[ -z "$SF_INSTANCE_URL" || -z "$SF_CONSUMER_KEY" || -z "$SF_USERNAME" || -z "$SF_JWT_KEY" ]]; then
-              echo "❌ ERROR: One or more required environment variables are missing!"
-              exit 1
-            fi
-            echo "$SF_JWT_KEY" > server.key
-            sf auth jwt grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --instance-url $SF_INSTANCE_URL --set-default
-            sf project deploy start --target-org $SF_USERNAME --manifest package.xml --test-level RunLocalTests
+            source $HOME/.bashrc
+            sf project deploy start --target-org myOrg --manifest package.xml --test-level RunLocalTests
             echo "✅ Deployment to Production completed!"
 
 workflows:
