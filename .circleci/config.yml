@@ -12,13 +12,14 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Salesforce CLI (Local to CircleCI Home Directory)
+          name: Install Salesforce CLI
           command: |
             mkdir -p ~/.npm-global
             npm config set prefix '~/.npm-global'
             export PATH=~/.npm-global/bin:$PATH
             echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
             npm install --global sfdx-cli
+            source $BASH_ENV
       - run:
           name: Verify Salesforce CLI Installation
           command: sfdx --version
@@ -27,6 +28,12 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
+      - run:
+          name: Ensure Salesforce CLI is Available
+          command: |
+            export PATH=~/.npm-global/bin:$PATH
+            source $BASH_ENV
+            sfdx --version
       - run:
           name: Authenticate with Salesforce
           command: |
@@ -38,6 +45,12 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
+      - run:
+          name: Ensure Salesforce CLI is Available
+          command: |
+            export PATH=~/.npm-global/bin:$PATH
+            source $BASH_ENV
+            sfdx --version
       - run:
           name: Create Scratch Org
           command: sfdx force:org:create -f config/project-scratch-def.json -a CircleCIScratchOrg -d 1 -s
@@ -55,6 +68,12 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
+      - run:
+          name: Ensure Salesforce CLI is Available
+          command: |
+            export PATH=~/.npm-global/bin:$PATH
+            source $BASH_ENV
+            sfdx --version
       - run:
           name: Deploy to Production
           command: sfdx force:source:deploy -x manifest/package.xml -u $SFDC_USERNAME --wait 10
