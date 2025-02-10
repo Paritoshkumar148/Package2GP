@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:18 # Use stable Node.js version
     working_directory: ~/project
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     executor: default
     steps:
       - checkout
-      
+
       - run:
           name: Install Dependencies
           command: npm install
@@ -20,16 +20,15 @@ jobs:
           name: Install Salesforce CLI
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            npm install --prefix ~/.npm-global -g @salesforce/cli
-            export PATH=~/.npm-global/bin:$PATH
-            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+            npm install -g @salesforce/cli
+            sf --version  # Verify installation
 
       - run:
           name: Authenticate Salesforce Org
           command: |
             echo "Authenticating Salesforce Org..."
             echo $SF_AUTH_URL > sfdx_auth_url.txt
-            sf org login sfdx-url --set-default --instance-url=https://login.salesforce.com --alias myOrg --json < sfdx_auth_url.txt
+            sf org login sfdx-url --set-default --alias myOrg --sfdx-url-file sfdx_auth_url.txt
 
       - run:
           name: Deploy to Salesforce
