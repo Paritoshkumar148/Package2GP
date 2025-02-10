@@ -1,100 +1,46 @@
 version: 2.1
 
 executors:
-  salesforce-executor:
+  sf_executor:
     docker:
-      - image: cimg/node:20.8  # Updated CircleCI image
+      - image: cimg/node:18.16
     working_directory: ~/project
 
 jobs:
-  setup:
-    executor: salesforce-executor
+  auth:
+    executor: sf_executor
     steps:
       - checkout
       - run:
-          name: Install Dependencies
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y curl unzip
+          name: Install Salesforce CLI
+          command: npm install --global sfdx-cli
       - run:
-          name: Install Salesforce CLI in Home Directory
+          name: Authenticate with Salesforce
           command: |
-            npm install --global sfdx-cli --unsafe-perm=true --prefix ~/.npm-global
-            export PATH=~/.npm-global/bin:$PATH
-            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            sfdx --version
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - .
+            echo "$SF_JWT_SECRET" > server.key
+            sfdx auth:jwt:grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --set-default-dev-hub
 
-  create-scratch-org:
-    executor: salesforce-executor
+  deploy:
+    executor: sf_executor
     steps:
-      - attach_workspace:
-          at: ~/project
+      - checkout
       - run:
-          name: Create Salesforce Scratch Org
-          command: |
-            sfdx force:org:create -f config/project-scratch-def.json -a ScratchOrg -d 1 -s
-            sfdx force:org:display -u ScratchOrg
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - .
-
-  deploy-changes:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+          name: Install Salesforce CLI
+          command: npm install --global sfdx-cli
       - run:
-          name: Deploy Changes to Scratch Org
+          name: Authenticate with Salesforce
           command: |
-            sfdx force:source:push -u ScratchOrg
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - .
-
-  run-tests:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+            echo "$SF_JWT_SECRET" > server.key
+            sfdx auth:jwt:grant --client-id $SF_CONSUMER_KEY --jwt-key-file server.key --username $SF_USERNAME --set-default-dev-hub
       - run:
-          name: Run Apex Tests and Check Coverage
-          command: |
-            sfdx force:apex:test:run -u ScratchOrg --codecoverage --resultformat human
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - .
-
-  delete-scratch-org:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
-      - run:
-          name: Delete Scratch Org
-          command: |
-            sfdx force:org:delete -u ScratchOrg -p
+          name: Deploy to Salesforce
+          command: sfdx force:source:deploy -p force-app -u $SF_USERNAME --json --loglevel fatal
 
 workflows:
   version: 2
-  salesforce-ci-cd:
+  deploy_flow:
     jobs:
-      - setup
-      - create-scratch-org:
+      - auth
+      - deploy:
           requires:
-            - setup
-      - deploy-changes:
-          requires:
-            - create-scratch-org
-      - run-tests:
-          requires:
-            - deploy-changes
-      - delete-scratch-org:
-          requires:
-            - run-tests
+            - auth
