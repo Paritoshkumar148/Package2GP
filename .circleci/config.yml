@@ -12,18 +12,22 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install Salesforce CLI
+          name: Install Salesforce CLI (Silent Mode)
           command: |
+            export PATH=~/.npm-global/bin:$PATH
             mkdir -p ~/.npm-global
             npm config set prefix '~/.npm-global'
-            export PATH=~/.npm-global/bin:$PATH
             echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            npm install --global @salesforce/cli
-            exec bash  # Restart shell to apply changes
+            npm install --global @salesforce/cli --quiet &> install.log &  # Run in background
+            echo "Installing Salesforce CLI..."
+            while ps aux | grep "[n]pm install --global @salesforce/cli" > /dev/null; do
+              echo -n "."; sleep 10;
+            done
+            echo "Installation completed."
       - run:
           name: Verify Salesforce CLI Installation
           command: |
-            echo "Current PATH: $PATH"
+            source $BASH_ENV
             which sf || echo "Salesforce CLI not found!"
             sf --version || echo "Salesforce CLI version check failed!"
 
@@ -32,24 +36,16 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Debug PATH and Environment
-          command: |
-            echo "Current PATH: $PATH"
-            ls -la ~/.npm-global/bin
-            echo "BASH_ENV Content:"
-            cat $BASH_ENV
-      - run:
           name: Ensure Salesforce CLI is Available
           command: |
             export PATH=~/.npm-global/bin:$PATH
             source $BASH_ENV
-            which sf || echo "Salesforce CLI not found!"
-            sf --version || echo "Salesforce CLI version check failed!"
+            sf --version
       - run:
           name: Authenticate with Salesforce
           command: |
             echo $SFDC_JWT_KEY | base64 --decode > server.key
-            sf org login jwt --client-id $SFDC_CONSUMER_KEY --jwt-key-file server.key --username $SFDC_USERNAME --instance-url https://login.salesforce.com
+            sf auth jwt grant --client-id $SFDC_CONSUMER_KEY --jwt-key-file server.key --username $SFDC_USERNAME --instance-url https://login.salesforce.com
             sf org list
 
   create-scratch-org:
@@ -70,10 +66,10 @@ jobs:
           command: sf project deploy start
       - run:
           name: Run Apex Tests
-          command: sf apex run test --result-format human --code-coverage --wait 10
+          command: sf apex test run --result-format human --code-coverage --wait 10
       - run:
           name: Delete Scratch Org
-          command: sf org delete scratch -u CircleCIScratchOrg -p
+          command: sf org delete scratch -u CircleCIScratchOrg --no-prompt
 
   deploy-to-prod:
     executor: salesforce-executor
@@ -87,7 +83,7 @@ jobs:
             sf --version
       - run:
           name: Deploy to Production
-          command: sf project deploy start -x manifest/package.xml -o $SFDC_USERNAME --wait 10
+          command: sf project deploy start -x manifest/package.xml -u $SFDC_USERNAME --wait 10
 
 workflows:
   version: 2
