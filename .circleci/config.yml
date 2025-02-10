@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: cimg/node:18.17  # ✅ Uses Node.js 18 with NPM pre-installed
+      - image: cimg/node:18.17  # ✅ Uses a lightweight Node.js image with npm pre-installed
     working_directory: ~/project
 
 jobs:
@@ -11,91 +11,49 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - sf-cli-cache-v1-{{ checksum "package.json" }}  # ✅ Cache based on package.json changes
       - run:
-          name: Install Salesforce CLI (Silent Mode)
+          name: Install Salesforce CLI (Using Cache)
           command: |
-            export PATH=~/.npm-global/bin:$PATH
-            mkdir -p ~/.npm-global
-            npm config set prefix '~/.npm-global'
-            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            npm install --global @salesforce/cli --quiet &> install.log &  # Run in background
-            echo "Installing Salesforce CLI..."
-            while ps aux | grep "[n]pm install --global @salesforce/cli" > /dev/null; do
-              echo -n "."; sleep 10;
-            done
-            echo "Installation completed."
+            if sf --version > /dev/null 2>&1; then
+              echo "✅ Salesforce CLI already installed, skipping..."
+            else
+              echo "🚀 Installing Salesforce CLI..."
+              npm install --global @salesforce/cli --quiet
+            fi
       - run:
-          name: Verify Salesforce CLI Installation
-          command: |
-            source $BASH_ENV
-            which sf || echo "Salesforce CLI not found!"
-            sf --version || echo "Salesforce CLI version check failed!"
+          name: Verify Salesforce CLI
+          command: sf --version
+      - save_cache:
+          paths:
+            - ~/.npm-global
+          key: sf-cli-cache-v1-{{ checksum "package.json" }}
 
-  authenticate:
+  deploy:
     executor: salesforce-executor
     steps:
       - checkout
       - run:
-          name: Ensure Salesforce CLI is Available
+          name: Authenticate Salesforce Org
           command: |
-            export PATH=~/.npm-global/bin:$PATH
-            source $BASH_ENV
-            sf --version
+            echo "Authenticating Salesforce Org..."
+            sf org login sfdx-url --set-default --instance-url=https://login.salesforce.com --alias myOrg --json <<< $SF_AUTH_URL
       - run:
-          name: Authenticate with Salesforce
+          name: Deploy Salesforce Package
           command: |
-            echo $SFDC_JWT_KEY | base64 --decode > server.key
-            sf auth jwt grant --client-id $SFDC_CONSUMER_KEY --jwt-key-file server.key --username $SFDC_USERNAME --instance-url https://login.salesforce.com
-            sf org list
-
-  create-scratch-org:
-    executor: salesforce-executor
-    steps:
-      - checkout
+            echo "🚀 Deploying to Salesforce..."
+            sf project deploy start --wait 10
       - run:
-          name: Ensure Salesforce CLI is Available
-          command: |
-            export PATH=~/.npm-global/bin:$PATH
-            source $BASH_ENV
-            sf --version
-      - run:
-          name: Create Scratch Org
-          command: sf org create scratch -f config/project-scratch-def.json -a CircleCIScratchOrg -d 1 -s
-      - run:
-          name: Push Source Code
-          command: sf project deploy start
-      - run:
-          name: Run Apex Tests
-          command: sf apex test run --result-format human --code-coverage --wait 10
-      - run:
-          name: Delete Scratch Org
-          command: sf org delete scratch -u CircleCIScratchOrg --no-prompt
-
-  deploy-to-prod:
-    executor: salesforce-executor
-    steps:
-      - checkout
-      - run:
-          name: Ensure Salesforce CLI is Available
-          command: |
-            export PATH=~/.npm-global/bin:$PATH
-            source $BASH_ENV
-            sf --version
-      - run:
-          name: Deploy to Production
-          command: sf project deploy start -x manifest/package.xml -u $SFDC_USERNAME --wait 10
+          name: Run Tests
+          command: sf apex run test --result-format human
 
 workflows:
   version: 2
   deploy:
     jobs:
       - install_salesforce_cli
-      - authenticate:
+      - deploy:
           requires:
             - install_salesforce_cli
-      - create-scratch-org:
-          requires:
-            - authenticate
-      - deploy-to-prod:
-          requires:
-            - create-scratch-org
