@@ -34,7 +34,7 @@ jobs:
             echo "🔐 Authenticating Salesforce Org..."
             export PATH=$HOME/.npm-global/bin:$PATH  # Ensure PATH is updated
 
-            # Validate required environment variables 123456213456123456
+            # Validate required environment variables 1234562134561234562345
             if [[ -z "$SF_CONSUMER_KEY" || -z "$SF_USERNAME" || -z "$SF_INSTANCE_URL" || -z "$SF_JWT_KEY" ]]; then
               echo "❌ ERROR: One or more required environment variables are missing!"
               echo "Required: SF_CONSUMER_KEY, SF_USERNAME, SF_INSTANCE_URL, SF_JWT_KEY"
