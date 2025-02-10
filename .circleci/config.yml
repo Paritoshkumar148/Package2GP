@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/node:18.17 # Updated to the correct Node.js image
+      - image: cimg/node:18.17 # Correct Node.js image
     working_directory: ~/project
 
 jobs:
@@ -20,7 +20,8 @@ jobs:
           name: Install Salesforce CLI
           command: |
             echo "🚀 Installing Salesforce CLI..."
-            npm install -g @salesforce/cli
+            npm install -g @salesforce/cli --unsafe-perm=true --prefix=$HOME/.npm-global
+            export PATH=$HOME/.npm-global/bin:$PATH
             sf --version  # Verify installation
 
       - run:
