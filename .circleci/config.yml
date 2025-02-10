@@ -3,7 +3,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: circleci/node:18 # Use stable Node.js version
+      - image: cimg/node:18.17 # Updated to the correct Node.js image
     working_directory: ~/project
 
 jobs:
