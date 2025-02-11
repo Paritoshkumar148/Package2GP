@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: circleci/node:18 # Use a stable Node.js version
+      - image: node:18 # Use a stable Node.js version
     working_directory: ~/project
 
 jobs:
