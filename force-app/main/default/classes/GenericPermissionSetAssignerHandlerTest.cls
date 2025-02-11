@@ -100,7 +100,7 @@ public class GenericPermissionSetAssignerHandlerTest {
         insert psaList;
         insert psaListofTargetuser;
     }
-/*Test method for checking is User Objet is accessiable for user.*/    
+    /*Test method for checking is User Objet is accessiable for user.*/    
      @isTest
     static void isAccForUserObjeTest() {
         
@@ -116,7 +116,7 @@ public class GenericPermissionSetAssignerHandlerTest {
         }
         Test.stopTest();
     }
-/*Test method is retriving the all Active and InActive Source Users.*/
+    /*Test method is retriving the all Active and InActive Source Users.*/
     @isTest
     static void getSourceUsersTest() {
         Test.startTest();
@@ -126,7 +126,7 @@ public class GenericPermissionSetAssignerHandlerTest {
         System.assertNotEquals(0, users.size(), 'Source users should be retrieved.');
     }
 
-/*Test method for retriving the all Active Target Users.*/    
+    /*Test method for retriving the all Active Target Users.*/    
     @isTest
     static void getTargetUsersTest() {
         User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
@@ -138,7 +138,7 @@ public class GenericPermissionSetAssignerHandlerTest {
 
         System.assertNotEquals(1, targetUsers.size(), 'Target users should be retrieved.');
     }
-/*Test method for retriving all the assigned permission for source User except the Standard permission Set is Assigned*/
+    /*Test method for retriving all the assigned permission for source User except the Standard permission Set is Assigned*/
     @isTest
     static void getSourcePermissionSetTest() {
         User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
@@ -149,7 +149,7 @@ public class GenericPermissionSetAssignerHandlerTest {
 
         System.assertEquals(5, psaList.size(), 'All 5 permission sets for the target user should be retrieved.');
     }
-/*Test method for retriving all the assigned permission for Target User except the Standard permission Set is Assigned*/
+    /*Test method for retriving all the assigned permission for Target User except the Standard permission Set is Assigned*/
      @isTest
     static void getTargetPermissionSetTest() {
         User targetUser = [SELECT Id FROM User WHERE FirstName = 'Target' LIMIT 1];
@@ -160,7 +160,7 @@ public class GenericPermissionSetAssignerHandlerTest {
 
         System.assertEquals(2, psaList.size(), '2 permission sets for the source user should be retrieved.');
     }
-/*Test method for assigning Custom Permission Set Functionallity to Target User.*/
+    /*Test method for assigning Custom Permission Set Functionallity to Target User.*/
     @isTest
     static void assignCustomPermissionSetsToTargetUserTest() {
         User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
@@ -184,8 +184,8 @@ public class GenericPermissionSetAssignerHandlerTest {
         List<PermissionSetAssignment> psaList = [SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = :targetUser.Id];
         System.assertNotEquals(0, psaList.size(), 'Custom permission sets should be assigned to the target user.');
     }
-/*Test method for assigning Upgrade Permission Sets positive Functionallity to Target User. */
- @isTest
+    /*Test method for assigning Upgrade Permission Sets positive Functionallity to Target User. */
+    @isTest
     static void upgradePermissionSetOfTargetUserPositiveTest() {
         // Retrieve users and permission sets
         User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
@@ -223,8 +223,8 @@ public class GenericPermissionSetAssignerHandlerTest {
             System.assertEquals(5, targetAssignments.size(), 'The target user should have the expected upgraded permission sets assigned.');
         }
     }
-/*Test method for assigning Upgrade Permission Sets negative Functionallity to Target User.*/
-@isTest
+    /*Test method for assigning Upgrade Permission Sets negative Functionallity to Target User.*/
+    @isTest
         static void upgradePermissionSetOfTargetUserNegativeTest(){
              User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
              User targetUser = [SELECT Id FROM User WHERE FirstName = 'NewTarget' LIMIT 1];
@@ -242,7 +242,7 @@ public class GenericPermissionSetAssignerHandlerTest {
                 ];
                 System.assertEquals(7, targetAssignmentsAfterUpgrade.size(), 'Six permission set of Source user should be upgrade to the target with one permission set of Target user.');
         }
-/*Test method for assigning Clone Permission Sets positive Functionallity to Target User.*/
+    /*Test method for assigning Clone Permission Sets positive Functionallity to Target User.*/
     @isTest
     static void clonePermissionSetOfTargetUserPositiveTest() {
         User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
@@ -261,9 +261,9 @@ public class GenericPermissionSetAssignerHandlerTest {
         List<PermissionSetAssignment> psaList = [SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = :targetUser.Id];
         System.assertNotEquals(0, psaList.size(), 'Permission sets should be cloned for the target user.');
     }
-/*Test method for assigning Clone Permission Sets negative Functionallity to Target User.*/
-@isTest
-static void clonePermissionSetOfTargetUserNegativeTest(){
+    /*Test method for assigning Clone Permission Sets negative Functionallity to Target User.*/
+    @isTest
+    static void clonePermissionSetOfTargetUserNegativeTest(){
     User sourceUser = [SELECT Id FROM User WHERE FirstName = 'Source' LIMIT 1];
     User targetUser = [SELECT Id FROM User WHERE FirstName = 'NewTarget' LIMIT 1];
     Map<String, Boolean> cloneTarget = new Map<String, Boolean>();
