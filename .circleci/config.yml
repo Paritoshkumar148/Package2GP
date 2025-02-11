@@ -35,7 +35,7 @@ jobs:
             rm -f sfdx_auth_url.txt
             echo "$SF_AUTH_URL" > sfdx_auth_url.txt
             sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub || (echo "❌ Dev Hub authentication failed!" && exit 1)
-            echo "✅ Dev Hub authentication successful!"
+            echo "✅ Dev Hub authentication successful123!"
 
       - run:
           name: Create Scratch Org
