@@ -12,40 +12,43 @@ jobs:
     steps:
       - checkout
 
-      # Install Salesforce CLI
+      # Install Salesforce CLI without root permissions
       - run:
           name: "Install Salesforce CLI"
           command: |
-            npm install --global sfdx-cli
-            sf --version
+            mkdir ~/sfdx
+            npm install --prefix ~/sfdx sfdx-cli
+            echo 'export PATH=~/sfdx/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            ~/sfdx/bin/sf --version
 
       # Authenticate using the SFDX URL from CircleCI environment variables
       - run:
           name: "Authenticate with Salesforce"
           command: |
             echo $SF_AUTH_URL > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
-            sf org list
+            ~/sfdx/bin/sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            ~/sfdx/bin/sf org list
 
       # Create a new Scratch Org
       - run:
           name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+          command: ~/sfdx/bin/sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
 
       # Push metadata to Scratch Org
       - run:
           name: "Push Source to Scratch Org"
-          command: sf project deploy start --use-most-recent
+          command: ~/sfdx/bin/sf project deploy start --use-most-recent
 
       # Run Apex tests with Code Coverage
       - run:
           name: "Run Apex Tests"
-          command: sf apex run test --code-coverage --result-format human
+          command: ~/sfdx/bin/sf apex run test --code-coverage --result-format human
 
       # Delete the Scratch Org after tests (Cleanup)
       - run:
           name: "Delete Scratch Org"
-          command: sf org delete scratch --target-org ScratchOrg --no-prompt
+          command: ~/sfdx/bin/sf org delete scratch --target-org ScratchOrg --no-prompt
 
 workflows:
   version: 2
