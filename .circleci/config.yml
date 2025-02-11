@@ -12,12 +12,13 @@ jobs:
     steps:
       - checkout
 
-      # Install the latest Salesforce CLI
+      # Install the new Salesforce CLI correctly
       - run:
           name: "Install Salesforce CLI"
           command: |
             npm install --global @salesforce/cli
             echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+            echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
             sf --version  # Validate installation
 
