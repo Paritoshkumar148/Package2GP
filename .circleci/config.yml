@@ -1,72 +1,54 @@
 version: 2.1
 
 executors:
-  default:
+  salesforce-executor:
     docker:
-      - image: cimg/node:18.17
+      - image: circleci/node:16 # Use a compatible Node.js version
     working_directory: ~/project
 
 jobs:
-  deploy:
-    executor: default
+  setup-scratch-org:
+    executor: salesforce-executor
     steps:
       - checkout
 
+      # Install Salesforce CLI
       - run:
-          name: Install Dependencies
-          command: npm install
-
-      - run:
-          name: Install Salesforce CLI (Fix Permissions)
+          name: "Install Salesforce CLI"
           command: |
-            echo "🚀 Installing Salesforce CLI..."
-            mkdir -p ~/.npm-global
-            npm config set prefix '~/.npm-global'
-            export PATH=~/.npm-global/bin:$PATH
-            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            npm install -g @salesforce/cli || (echo "❌ Salesforce CLI installation failed!" && exit 1)
+            npm install --global sfdx-cli
             sf --version
-            echo "✅ Salesforce CLI installed successfully!"
 
+      # Authenticate using the SFDX URL from CircleCI environment variables
       - run:
-          name: Authenticate Dev Hub
+          name: "Authenticate with Salesforce"
           command: |
-            echo "🔐 Authenticating Dev Hub..."
-            rm -f sfdx_auth_url.txt
-            echo "$SF_AUTH_URL" > sfdx_auth_url.txt
-            sf org login sfdx-url -f sfdx_auth_url.txt --set-default-dev-hub || (echo "❌ Dev Hub authentication failed!" && exit 1)
-            echo "✅ Dev Hub authentication successful123!"
+            echo $SF_AUTH_URL > sfdx_auth.txt
+            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            sf org list
 
+      # Create a new Scratch Org
       - run:
-          name: Create Scratch Org
-          command: |
-            echo "📌 Creating Scratch Org..."
-            sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias scratchOrg --duration-days 7 || (echo "❌ Scratch org creation failed!" && exit 1)
-            echo "✅ Scratch org created!"
+          name: "Create Scratch Org"
+          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
 
+      # Push metadata to Scratch Org
       - run:
-          name: Deploy Metadata
-          command: |
-            echo "🚀 Deploying metadata to Scratch Org..."
-            sf project deploy --target-org scratchOrg || (echo "❌ Metadata deployment failed!" && exit 1)
-            echo "✅ Metadata deployed!"
+          name: "Push Source to Scratch Org"
+          command: sf project deploy start --use-most-recent
 
+      # Run Apex tests with Code Coverage
       - run:
-          name: Run Apex Tests
-          command: |
-            echo "🧪 Running Apex tests..."
-            sf apex run test --target-org scratchOrg --result-format human --code-coverage --wait 10 || (echo "❌ Apex tests failed!" && exit 1)
-            echo "✅ Apex tests completed!"
+          name: "Run Apex Tests"
+          command: sf apex run test --code-coverage --result-format human
 
+      # Delete the Scratch Org after tests (Cleanup)
       - run:
-          name: Deploy to Production
-          command: |
-            echo "🚀 Deploying to Production..."
-            sf project deploy --target-org myOrg --manifest package.xml --test-level RunLocalTests || (echo "❌ Deployment to Production failed!" && exit 1)
-            echo "✅ Deployment to Production completed!"
+          name: "Delete Scratch Org"
+          command: sf org delete scratch --target-org ScratchOrg --no-prompt
 
 workflows:
   version: 2
-  deploy:
+  ci_pipeline:
     jobs:
-      - deploy
+      - setup-scratch-org
