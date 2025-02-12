@@ -46,6 +46,33 @@ jobs:
           name: "Run Apex Tests"
           command: sf apex run test --code-coverage --result-format human
 
+      # Create a package (if not already created)
+      - run:
+          name: "Create Unlocked Package"
+          command: |
+            PACKAGE_NAME="MyPackage"
+            PACKAGE_TYPE="Unlocked"
+            EXISTING_PACKAGE=$(sf package list --json | jq -r --arg name "$PACKAGE_NAME" '.result[] | select(.Name==$name) | .Id')
+            if [ -z "$EXISTING_PACKAGE" ]; then
+              sf package create --name "$PACKAGE_NAME" --type "$PACKAGE_TYPE" --path force-app --package-manager npm
+            else
+              echo "Package already exists: $EXISTING_PACKAGE"
+            fi
+
+      # Create a new package version
+      - run:
+          name: "Create Package Version"
+          command: |
+            PACKAGE_ID=$(sf package list --json | jq -r '.result[0].Id')
+            sf package version create --package "$PACKAGE_ID" --installation-key-bypass --wait 10 --code-coverage
+
+      # Install the package in Scratch Org
+      - run:
+          name: "Install Package in Scratch Org"
+          command: |
+            PACKAGE_VERSION_ID=$(sf package version list --json | jq -r '.result[0].SubscriberPackageVersionId')
+            sf package install --package "$PACKAGE_VERSION_ID" --target-org ScratchOrg --wait 10 --publish-wait 10 --no-prompt
+
       # Delete the Scratch Org after tests (Cleanup)
       - run:
           name: "Delete Scratch Org"
