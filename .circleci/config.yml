@@ -12,11 +12,12 @@ jobs:
     steps:
       - checkout
 
-      # Install the new Salesforce CLI correctly
+      # Install required dependencies
       - run:
-          name: "Install Salesforce CLI"
+          name: "Install Dependencies"
           command: |
-            npm install --global @salesforce/cli
+            apt-get update && apt-get install -y jq  # Install jq
+            npm install --global @salesforce/cli  # Install Salesforce CLI
             echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
             echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
@@ -46,32 +47,24 @@ jobs:
           name: "Run Apex Tests"
           command: sf apex run test --code-coverage --result-format human
 
-      # Create a package (if not already created)
+      # Create Unlocked Package
       - run:
           name: "Create Unlocked Package"
           command: |
-            PACKAGE_NAME="MyPackage"
-            PACKAGE_TYPE="Unlocked"
-            EXISTING_PACKAGE=$(sf package list --json | jq -r --arg name "$PACKAGE_NAME" '.result[] | select(.Name==$name) | .Id')
-            if [ -z "$EXISTING_PACKAGE" ]; then
-              sf package create --name "$PACKAGE_NAME" --type "$PACKAGE_TYPE" --path force-app --package-manager npm
-            else
-              echo "Package already exists: $EXISTING_PACKAGE"
-            fi
+            PACKAGE_ID=$(sf package create --name "MyPackage" --description "Salesforce Package" --path force-app --package-type Unlocked --no-namespace --json | jq -r '.result.id')
+            echo "Package ID: $PACKAGE_ID"
 
-      # Create a new package version
+      # Create Package Version
       - run:
           name: "Create Package Version"
           command: |
-            PACKAGE_ID=$(sf package list --json | jq -r '.result[0].Id')
-            sf package version create --package "$PACKAGE_ID" --installation-key-bypass --wait 10 --code-coverage
+            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
+            echo "Package Version ID: $PACKAGE_VERSION_ID"
 
-      # Install the package in Scratch Org
+      # Install Package
       - run:
           name: "Install Package in Scratch Org"
-          command: |
-            PACKAGE_VERSION_ID=$(sf package version list --json | jq -r '.result[0].SubscriberPackageVersionId')
-            sf package install --package "$PACKAGE_VERSION_ID" --target-org ScratchOrg --wait 10 --publish-wait 10 --no-prompt
+          command: sf package install --package $PACKAGE_VERSION_ID --wait 10 --target-org ScratchOrg
 
       # Delete the Scratch Org after tests (Cleanup)
       - run:
