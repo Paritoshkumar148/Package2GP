@@ -46,6 +46,12 @@ jobs:
           name: "Run Apex Tests"
           command: sf apex run test --code-coverage --result-format human
 
+      # Create a new package version
+      - run:
+          name: "Create Unlocked Package Version"
+          command: |
+            sf package version create --package <PACKAGE_NAME_OR_ID> --installation-key-bypass --wait 10 --target-dev-hub ScratchOrg
+
       # Delete the Scratch Org after tests (Cleanup)
       - run:
           name: "Delete Scratch Org"
