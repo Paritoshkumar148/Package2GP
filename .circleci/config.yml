@@ -46,12 +46,34 @@ jobs:
           name: "Run Apex Tests"
           command: sf apex run test --code-coverage --result-format human
 
-      # Create a new package version (Replace YOUR_PACKAGE_ID_HERE)
+      # Fetch or Create Package Dynamically
       - run:
-          name: "Create Unlocked Package Version"
+          name: "Fetch or Create 2GP Package"
           command: |
-            PACKAGE_ID="YOUR_PACKAGE_ID_HERE"
-            sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --target-dev-hub ScratchOrg
+            PACKAGE_NAME="MySalesforcePackage"  # Replace with your package name
+            PACKAGE_TYPE="Managed"  # Change to "Unlocked" if needed
+
+            # Try fetching an existing package ID
+            PACKAGE_ID=$(sf package list --json | jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
+
+            # If the package doesn't exist, create it
+            if [ -z "$PACKAGE_ID" ]; then
+              echo "Package does not exist. Creating..."
+              PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | jq -r '.result.Id')
+            fi
+
+            echo "Using Package ID: $PACKAGE_ID"
+            echo "export PACKAGE_ID=$PACKAGE_ID" >> $BASH_ENV
+
+      # Create a new package version dynamically
+      - run:
+          name: "Create 2GP Package Version"
+          command: |
+            source $BASH_ENV
+            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
+
+            echo "Package Version ID: $PACKAGE_VERSION_ID"
+            echo "export PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
 
       # Delete the Scratch Org after tests (Cleanup)
       - run:
