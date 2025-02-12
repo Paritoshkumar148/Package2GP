@@ -75,7 +75,7 @@ jobs:
             echo "Package Version ID: $PACKAGE_VERSION_ID"
             echo "export PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
 
-      # Delete the Scratch Org after tests (Cleanup)
+      # Delete the Scratch Org after tests (Cleanup)1324567
       - run:
           name: "Delete Scratch Org"
           command: sf org delete scratch --target-org ScratchOrg --no-prompt
