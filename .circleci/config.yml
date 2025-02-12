@@ -32,26 +32,10 @@ jobs:
             sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
             sf org list
 
-      # Delete old scratch orgs to avoid hitting the limit
-      - run:
-          name: "Delete Old Scratch Orgs"
-          command: |
-            EXISTING_ORGS=$(sf org list --json | jq -r '.result.scratchOrgs[]?.alias')
-            for ORG in $EXISTING_ORGS; do
-              sf org delete scratch --target-org $ORG --no-prompt || true
-            done
-
-      # Create a new Scratch Org (with retry logic)
+      # Create a new Scratch Org
       - run:
           name: "Create Scratch Org"
-          command: |
-            COUNT=0
-            until sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg || [ $COUNT -ge 3 ]; do
-              echo "Retrying Scratch Org creation... ($COUNT)"
-              COUNT=$((COUNT+1))
-              sleep 5
-            done
-            sf org list
+          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
 
       # Push metadata to Scratch Org
       - run:
@@ -67,17 +51,33 @@ jobs:
       - run:
           name: "Create Unlocked Package"
           command: |
+            echo "Creating Salesforce Package..."
             PACKAGE_ID=$(sf package create --name "MyPackage" --description "Salesforce Package" --path force-app --package-type Unlocked --no-namespace --json | jq -r '.result.id')
+
+            if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" == "null" ]; then
+              echo "Error: Package creation failed!"
+              exit 1
+            fi
+
             echo "Package ID: $PACKAGE_ID"
 
-      # Create Package Version
+      # Create Package Version with Improved Logging
       - run:
           name: "Create Package Version"
           command: |
-            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
+            echo "Creating Package Version for Package ID: $PACKAGE_ID"
+
+            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | tee package_version.log | jq -r '.result.SubscriberPackageVersionId')
+
+            if [ -z "$PACKAGE_VERSION_ID" ] || [ "$PACKAGE_VERSION_ID" == "null" ]; then
+              echo "Error: Failed to create package version. Check package_version.log for details."
+              cat package_version.log
+              exit 1
+            fi
+
             echo "Package Version ID: $PACKAGE_VERSION_ID"
 
-      # Install Package
+      # Install Package in Scratch Org
       - run:
           name: "Install Package in Scratch Org"
           command: sf package install --package $PACKAGE_VERSION_ID --wait 10 --target-org ScratchOrg
