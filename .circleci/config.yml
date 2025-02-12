@@ -32,10 +32,26 @@ jobs:
             sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
             sf org list
 
-      # Create a new Scratch Org
+      # Delete old scratch orgs to avoid hitting the limit
+      - run:
+          name: "Delete Old Scratch Orgs"
+          command: |
+            EXISTING_ORGS=$(sf org list --json | jq -r '.result.scratchOrgs[]?.alias')
+            for ORG in $EXISTING_ORGS; do
+              sf org delete scratch --target-org $ORG --no-prompt || true
+            done
+
+      # Create a new Scratch Org (with retry logic)
       - run:
           name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+          command: |
+            COUNT=0
+            until sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg || [ $COUNT -ge 3 ]; do
+              echo "Retrying Scratch Org creation... ($COUNT)"
+              COUNT=$((COUNT+1))
+              sleep 5
+            done
+            sf org list
 
       # Push metadata to Scratch Org
       - run:
