@@ -85,7 +85,7 @@ jobs:
           name: "Install Package in Scratch Org"
           command: sf package install --package "$PACKAGE_VERSION_ID" --wait 10 --target-org ScratchOrg
 
-      # Delete the Scratch Org after tests (Cleanup)
+      # Delete the Scratch Org after tests (Cleanup)12345
       - run:
           name: "Delete Scratch Org"
           command: sf org delete scratch --target-org ScratchOrg --no-prompt
