@@ -1,80 +1,58 @@
 version: 2.1
 
 executors:
-  sf-executor:
+  salesforce-executor:
     docker:
-      - image: salesforce/salesforcedx:latest
+      - image: node:18 # Use a stable Node.js version
     working_directory: ~/project
 
 jobs:
-  setup:
-    executor: sf-executor
+  setup-scratch-org:
+    executor: salesforce-executor
     steps:
       - checkout
-      - run:
-          name: Authenticate Dev Hub
-          command: |
-            echo $SFDX_AUTH_URL > auth.jwt
-            sf auth jwt grant --client-id $SF_CONSUMER_KEY --jwt-key-file auth.jwt --username $SF_DEV_HUB_USERNAME --set-default-dev-hub
-      - run:
-          name: Create Scratch Org
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
 
-  deploy-metadata:
-    executor: sf-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+      # Install the new Salesforce CLI correctly
       - run:
-          name: Push Source to Scratch Org
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global @salesforce/cli
+            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+            echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            sf update
+            sf --version  # Validate installation
+
+      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+      - run:
+          name: "Authenticate with Salesforce"
+          command: |
+            echo $SF_AUTH_URL > sfdx_auth.txt
+            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            sf org list
+
+      # Create a new Scratch Org
+      - run:
+          name: "Create Scratch Org"
+          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+
+      # Push metadata to Scratch Org
+      - run:
+          name: "Push Source to Scratch Org"
           command: sf project deploy start --source-dir force-app
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
 
-  run-tests:
-    executor: sf-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+      # Run Apex tests with Code Coverage
       - run:
-          name: Run Apex Tests
-          command: sf apex run test --wait 10 --result-format human
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
+          name: "Run Apex Tests"
+          command: sf apex run test --code-coverage --result-format human
 
-  create-package:
-    executor: sf-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+      # Delete the Scratch Org after tests (Cleanup)
       - run:
-          name: Create Package Version
-          command: |
-            PACKAGE_VERSION=$(sf package version create --package $SF_PACKAGE_NAME --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
-            echo "export PACKAGE_VERSION=$PACKAGE_VERSION" >> $BASH_ENV
-      - run:
-          name: Install Package in Scratch Org
-          command: sf package install --package $PACKAGE_VERSION --wait 10 --publish-wait 10 --target-org=myscratchorg
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
+          name: "Delete Scratch Org"
+          command: sf org delete scratch --target-org ScratchOrg --no-prompt
 
 workflows:
   version: 2
-  deploy:
+  ci_pipeline:
     jobs:
-      - setup
-      - deploy-metadata:
-          requires:
-            - setup
-      - run-tests:
-          requires:
-            - deploy-metadata
-      - create-package:
-          requires:
-            - run-tests
+      - setup-scratch-org
