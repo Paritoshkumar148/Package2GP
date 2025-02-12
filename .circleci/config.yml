@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
 
-      # Install the new Salesforce CLI correctly
+      # Install Salesforce CLI correctly
       - run:
           name: "Install Salesforce CLI"
           command: |
@@ -46,11 +46,12 @@ jobs:
           name: "Run Apex Tests"
           command: sf apex run test --code-coverage --result-format human
 
-      # Create a new package version
+      # Create a new package version (Replace YOUR_PACKAGE_ID_HERE)
       - run:
           name: "Create Unlocked Package Version"
           command: |
-            sf package version create --package <PACKAGE_NAME_OR_ID> --installation-key-bypass --wait 10 --target-dev-hub ScratchOrg
+            PACKAGE_ID="YOUR_PACKAGE_ID_HERE"
+            sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --target-dev-hub ScratchOrg
 
       # Delete the Scratch Org after tests (Cleanup)
       - run:
