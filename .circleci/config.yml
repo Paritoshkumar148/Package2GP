@@ -56,7 +56,7 @@ jobs:
             # Try fetching an existing package ID
             PACKAGE_ID=$(sf package list --json | jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
 
-            # If the package doesn't exist, create it
+            # If the package doesn't exist, create it12345
             if [ -z "$PACKAGE_ID" ]; then
               echo "Package does not exist. Creating..."
               PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | jq -r '.result.Id')
