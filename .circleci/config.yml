@@ -1,97 +1,80 @@
 version: 2.1
 
 executors:
-  salesforce-executor:
+  sf-executor:
     docker:
-      - image: node:18 # Use a stable Node.js version
+      - image: salesforce/salesforcedx:latest
     working_directory: ~/project
 
 jobs:
-  setup-scratch-org:
-    executor: salesforce-executor
+  setup:
+    executor: sf-executor
     steps:
       - checkout
-
-      # Install required dependencies
       - run:
-          name: "Install Dependencies"
+          name: Authenticate Dev Hub
           command: |
-            apt-get update && apt-get install -y jq  # Install jq
-            npm install --global @salesforce/cli  # Install Salesforce CLI
-            echo 'export PATH=$HOME/.sf/bin:$PATH' >> $BASH_ENV
-            source $BASH_ENV
-            sf update
-            sf --version  # Validate installation
-
-      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+            echo $SFDX_AUTH_URL > auth.jwt
+            sf auth jwt grant --client-id $SF_CONSUMER_KEY --jwt-key-file auth.jwt --username $SF_DEV_HUB_USERNAME --set-default-dev-hub
       - run:
-          name: "Authenticate with Salesforce"
-          command: |
-            echo "$SF_AUTH_URL" > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub --json
-            sf org list
+          name: Create Scratch Org
+          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1
+      - persist_to_workspace:
+          root: ~/project
+          paths: .
 
-      # Create a new Scratch Org
+  deploy-metadata:
+    executor: sf-executor
+    steps:
+      - attach_workspace:
+          at: ~/project
       - run:
-          name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
-
-      # Push metadata to Scratch Org
-      - run:
-          name: "Push Source to Scratch Org"
+          name: Push Source to Scratch Org
           command: sf project deploy start --source-dir force-app
+      - persist_to_workspace:
+          root: ~/project
+          paths: .
 
-      # Run Apex tests with Code Coverage
+  run-tests:
+    executor: sf-executor
+    steps:
+      - attach_workspace:
+          at: ~/project
       - run:
-          name: "Run Apex Tests"
-          command: sf apex run test --code-coverage --result-format human
+          name: Run Apex Tests
+          command: sf apex run test --wait 10 --result-format human
+      - persist_to_workspace:
+          root: ~/project
+          paths: .
 
-      # Create Unlocked Package
+  create-package:
+    executor: sf-executor
+    steps:
+      - attach_workspace:
+          at: ~/project
       - run:
-          name: "Create Unlocked Package"
+          name: Create Package Version
           command: |
-            echo "Creating Salesforce Package..."
-            PACKAGE_ID=$(sf package create --name "MyPackage" --description "Salesforce Package" --path force-app --package-type Unlocked --no-namespace --json | jq -r '.result.id')
-
-            if [ -z "$PACKAGE_ID" ] || [ "$PACKAGE_ID" == "null" ]; then
-              echo "Error: Package creation failed!"
-              exit 1
-            fi
-
-            echo "Package ID: $PACKAGE_ID"
-            echo "PACKAGE_ID=$PACKAGE_ID" >> $BASH_ENV
-            source $BASH_ENV
-
-      # Create Package Version with Improved Logging
+            PACKAGE_VERSION=$(sf package version create --package $SF_PACKAGE_NAME --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
+            echo "export PACKAGE_VERSION=$PACKAGE_VERSION" >> $BASH_ENV
       - run:
-          name: "Create Package Version"
-          command: |
-            echo "Creating Package Version for Package ID: $PACKAGE_ID"
-
-            PACKAGE_VERSION_ID=$(sf package version create --package "$PACKAGE_ID" --installation-key-bypass --wait 10 --json | tee package_version.log | jq -r '.result.SubscriberPackageVersionId')
-
-            if [ -z "$PACKAGE_VERSION_ID" ] || [ "$PACKAGE_VERSION_ID" == "null" ]; then
-              echo "Error: Failed to create package version. Check package_version.log for details."
-              cat package_version.log
-              exit 1
-            fi
-
-            echo "Package Version ID: $PACKAGE_VERSION_ID"
-            echo "PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
-            source $BASH_ENV
-
-      # Install Package in Scratch Org
-      - run:
-          name: "Install Package in Scratch Org"
-          command: sf package install --package "$PACKAGE_VERSION_ID" --wait 10 --target-org ScratchOrg
-
-      # Delete the Scratch Org after tests (Cleanup)12345
-      - run:
-          name: "Delete Scratch Org"
-          command: sf org delete scratch --target-org ScratchOrg --no-prompt
+          name: Install Package in Scratch Org
+          command: sf package install --package $PACKAGE_VERSION --wait 10 --publish-wait 10 --target-org=myscratchorg
+      - persist_to_workspace:
+          root: ~/project
+          paths: .
 
 workflows:
   version: 2
-  ci_pipeline:
+  deploy:
     jobs:
-      - setup-scratch-org
+      - setup
+      - deploy-metadata:
+          requires:
+            - setup
+      - run-tests:
+          requires:
+            - deploy-metadata
+      - create-package:
+          requires:
+            - run-tests
