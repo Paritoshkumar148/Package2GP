@@ -50,7 +50,7 @@ jobs:
       - run:
           name: "Fetch or Create 2GP Package"
           command: |
-            PACKAGE_NAME="MySalesforcePackage"  # Replace with your package name
+            PACKAGE_NAME="MySalesforcePackage123"  # Replace with your package name
             PACKAGE_TYPE="Managed"  # Change to "Unlocked" if needed
 
             # Try fetching an existing package ID
