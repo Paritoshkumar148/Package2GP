@@ -49,7 +49,7 @@ jobs:
               echo "Package already exists with ID: $PACKAGE_ID"
             fi
 
-            # Update sfdx-project.json dynamically
+            # Update sfdx-project.json dynamically12345678
             jq --arg name "$PACKAGE_NAME" --arg id "$PACKAGE_ID" '.packageAliases[$name] = $id' sfdx-project.json > temp.json && mv temp.json sfdx-project.json
 
       - persist_to_workspace:
