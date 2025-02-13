@@ -47,7 +47,7 @@ jobs:
           command: |
             sf package version create --package DemoPipeline --installation-key-bypass --wait 10 --code-coverage
 
-      # Install package in the scratch org
+      # Install package in the scratch org123
       - run:
           name: "Install Package Version"
           command: |
