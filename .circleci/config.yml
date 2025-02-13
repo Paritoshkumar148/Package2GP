@@ -17,13 +17,19 @@ jobs:
           name: "Install Salesforce CLI"
           command: |
             npm install --global @salesforce/cli
-            sf --version # Verify installation
+
+      # Authenticate Dev Hub (if not already authenticated)
+      - run:
+          name: "Authenticate Dev Hub"
+          command: |
+            echo $SF_AUTH_URL > authfile.json
+            sf org login sfdx-url --set-default-dev-hub --json --sfdx-url-file authfile.json
 
       # Create a package
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub
+            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHubAlias
 
       # Create a package version
       - run:
