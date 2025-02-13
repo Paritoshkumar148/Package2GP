@@ -5,6 +5,12 @@ executors:
     docker:
       - image: node:18 # Use a stable Node.js version
     working_directory: ~/project
+    steps:
+      - run:
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global @salesforce/cli
+            sf --version
 
 jobs:
   authenticate-dev-hub:
@@ -19,7 +25,7 @@ jobs:
               exit 1
             fi
             echo $SF_AUTH_URL > authfile.json
-            sf org login sfdx-url --set-default-dev-hub --json --sfdx-url-file authfile.json
+            sf org login sfdx-url --sfdx-url-file authfile.json --set-default-dev-hub --json
 
   create-package:
     executor: salesforce-executor
@@ -28,12 +34,12 @@ jobs:
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamPro123 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
+            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamPro123 --installation-key-bypass --wait 10 --code-coverage
+            sf package version create --package DemoNilamPro4 --installation-key-bypass --wait 10 --code-coverage
 
 workflows:
   version: 2
