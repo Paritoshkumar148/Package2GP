@@ -42,13 +42,13 @@ jobs:
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamSuper456 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
+            sf package create --name DemoNilamSuper30 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
       # Create a package version
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamSuper456 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
+            sf package version create --package DemoNilamSuper30 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
 
 workflows:
   version: 2
