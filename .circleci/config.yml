@@ -12,7 +12,7 @@ jobs:
     steps:
       - checkout
 
-        # Install the new Salesforce CLI correctly
+      # Install Salesforce CLI
       - run:
           name: "Install Salesforce CLI"
           command: |
@@ -23,13 +23,20 @@ jobs:
             sf update
             sf --version  # Validate installation
 
-      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+      # Authenticate Salesforce Dev Hub
       - run:
-          name: "Authenticate with Salesforce"
+          name: "Authenticate Dev Hub"
           command: |
-            echo $SF_AUTH_URL > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            echo $SF_AUTH_URL > authfile
+            sf org login sfdx-url -f authfile --set-default-dev-hub --alias MyDevHub
             sf org list
+
+      # Set correct alias mapping (if needed)
+      - run:
+          name: "Ensure Alias Mapping"
+          command: |
+            sf alias set MyDevHub=devhubenable@paritosh.com
+            sf alias list  # Verify aliases
 
       # Create a package
       - run:
