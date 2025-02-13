@@ -12,29 +12,18 @@ jobs:
     steps:
       - checkout
 
-      # Install Salesforce CLI
+      # Check for existing Scratch Org
       - run:
-          name: "Install Salesforce CLI"
+          name: "Check Existing Scratch Org"
           command: |
-            npm install --global @salesforce/cli
-            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $BASH_ENV
-            echo 'export PATH=$HOME/.local/share/sf/bin:$PATH' >> $BASH_ENV
-            source $BASH_ENV
-            sf update
-            sf --version  # Validate installation
-
-      # Authenticate using the SFDX_URL from CircleCI Environment Variables
-      - run:
-          name: "Authenticate with Salesforce"
-          command: |
-            echo $SF_AUTH_URL > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
-            sf org list
-
-      # Create a new Scratch Org
-      - run:
-          name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+            EXISTING_ORG=$(sf org list --json | jq -r '.result[] | select(.isScratchOrg == true and .status == "Active") | .alias')
+            if [ -n "$EXISTING_ORG" ]; then
+              echo "Reusing existing Scratch Org: $EXISTING_ORG"
+              sf org set default --target-org "$EXISTING_ORG"
+            else
+              echo "No active Scratch Org found. Creating a new one..."
+              sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+            fi
 
       # Push metadata to Scratch Org
       - run:
@@ -61,7 +50,14 @@ jobs:
       # Delete the Scratch Org after tests (Cleanup)
       - run:
           name: "Delete Scratch Org"
-          command: sf org delete scratch --target-org ScratchOrg --no-prompt
+          command: |
+            EXISTING_ORG=$(sf org list --json | jq -r '.result[] | select(.isScratchOrg == true and .status == "Active") | .alias')
+            if [ -n "$EXISTING_ORG" ]; then
+              echo "Deleting Scratch Org: $EXISTING_ORG"
+              sf org delete scratch --target-org "$EXISTING_ORG" --no-prompt
+            else
+              echo "No active Scratch Org to delete."
+            fi
 
 workflows:
   version: 2
