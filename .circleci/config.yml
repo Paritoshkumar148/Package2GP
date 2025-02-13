@@ -7,52 +7,25 @@ executors:
     working_directory: ~/project
 
 jobs:
-  setup-scratch-org:
+  create-package:
     executor: salesforce-executor
     steps:
       - checkout
 
-      # Install the new Salesforce CLI correctly
+      # Create a package
       - run:
-          name: "Install Salesforce CLI"
+          name: "Create Package"
           command: |
-            npm install --global @salesforce/cli
-            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
-            source $BASH_ENV
-            sf update
-            sf --version  # Validate installation
+            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub
 
-      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+      # Create a package version
       - run:
-          name: "Authenticate with Salesforce"
+          name: "Create Package Version"
           command: |
-            echo $SF_AUTH_URL > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
-            sf org list
-
-      # Create a new Scratch Org
-      - run:
-          name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
-
-      # Push metadata to Scratch Org
-      - run:
-          name: "Push Source to Scratch Org"
-          command: sf project deploy start --source-dir force-app
-
-      # Run Apex tests with Code Coverage
-      - run:
-          name: "Run Apex Tests"
-          command: sf apex run test --code-coverage --result-format human
-
-      # Delete the Scratch Org after tests (Cleanup)
-      - run:
-          name: "Delete Scratch Org"
-          command: sf org delete scratch --target-org ScratchOrg --no-prompt
+            sf package version create --package DemoNilamPro4 --installation-key-bypass --wait 10 --code-coverage
 
 workflows:
   version: 2
   ci_pipeline:
     jobs:
-      - setup-scratch-org
+      - create-package
