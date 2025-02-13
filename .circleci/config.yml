@@ -12,6 +12,12 @@ jobs:
     steps:
       - checkout
 
+      # Install jq
+      - run:
+          name: "Install jq"
+          command: |
+            apt-get update && apt-get install -y jq
+
       # Install Salesforce CLI correctly
       - run:
           name: "Install Salesforce CLI"
@@ -56,7 +62,7 @@ jobs:
             # Try fetching an existing package ID
             PACKAGE_ID=$(sf package list --json | jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
 
-            # If the package doesn't exist, create it12345
+            # If the package doesn't exist, create it
             if [ -z "$PACKAGE_ID" ]; then
               echo "Package does not exist. Creating..."
               PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | jq -r '.result.Id')
@@ -65,7 +71,7 @@ jobs:
             echo "Using Package ID: $PACKAGE_ID"
             echo "export PACKAGE_ID=$PACKAGE_ID" >> $BASH_ENV
 
-      # Create a new package version dynamically2134
+      # Create a new package version dynamically
       - run:
           name: "Create 2GP Package Version"
           command: |
@@ -75,7 +81,7 @@ jobs:
             echo "Package Version ID: $PACKAGE_VERSION_ID"
             echo "export PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
 
-      # Delete the Scratch Org after tests (Cleanup)1324567
+      # Delete the Scratch Org after tests (Cleanup)
       - run:
           name: "Delete Scratch Org"
           command: sf org delete scratch --target-org ScratchOrg --no-prompt
