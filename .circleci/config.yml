@@ -12,6 +12,13 @@ jobs:
     steps:
       - checkout
 
+      # Install Salesforce CLI
+      - run:
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global sfdx-cli
+            sf --version  # Verify installation
+
       # Authenticate Salesforce
       - run:
           name: "Authenticate Dev Hub"
