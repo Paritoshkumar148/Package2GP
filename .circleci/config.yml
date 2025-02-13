@@ -12,6 +12,25 @@ jobs:
     steps:
       - checkout
 
+      # Install Salesforce CLI
+      - run:
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global @salesforce/cli
+            echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> $BASH_ENV
+            echo 'export PATH=$HOME/.local/share/sf/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            sf update
+            sf --version  # Validate installation
+
+      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+      - run:
+          name: "Authenticate with Salesforce"
+          command: |
+            echo $SF_AUTH_URL > sfdx_auth.txt
+            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            sf org list
+
       # Create a new Scratch Org
       - run:
           name: "Create Scratch Org"
@@ -26,13 +45,13 @@ jobs:
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamPro123 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub
+            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub
 
       # Create a package version
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamPro123 --installation-key-bypass --wait 10 --code-coverage
+            sf package version create --package DemoNilamPro4 --installation-key-bypass --wait 10 --code-coverage
 
       # Run Apex tests with Code Coverage
       - run:
