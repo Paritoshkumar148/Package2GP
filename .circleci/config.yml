@@ -12,6 +12,13 @@ jobs:
     steps:
       - checkout
 
+      # Install Salesforce CLI
+      - run:
+          name: "Install Salesforce CLI"
+          command: |
+            npm install --global @salesforce/cli
+            sf --version # Verify installation
+
       # Create a package
       - run:
           name: "Create Package"
