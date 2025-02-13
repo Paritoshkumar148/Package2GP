@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: node:18 # Use a stable Node.js version
+      - image: cimg/node:18.17 # CircleCI-maintained image with better package support
     working_directory: ~/project
 
 jobs:
@@ -12,11 +12,12 @@ jobs:
     steps:
       - checkout
 
-      # Install jq
+      # Install jq explicitly
       - run:
           name: "Install jq"
           command: |
-            apt-get update && apt-get install -y jq
+            sudo apt-get update && sudo apt-get install -y jq
+            jq --version  # Verify jq installation
 
       # Install Salesforce CLI correctly
       - run:
@@ -60,12 +61,12 @@ jobs:
             PACKAGE_TYPE="Managed"  # Change to "Unlocked" if needed
 
             # Try fetching an existing package ID
-            PACKAGE_ID=$(sf package list --json | jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
+            PACKAGE_ID=$(sf package list --json | /usr/bin/jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
 
             # If the package doesn't exist, create it
             if [ -z "$PACKAGE_ID" ]; then
               echo "Package does not exist. Creating..."
-              PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | jq -r '.result.Id')
+              PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | /usr/bin/jq -r '.result.Id')
             fi
 
             echo "Using Package ID: $PACKAGE_ID"
@@ -76,7 +77,7 @@ jobs:
           name: "Create 2GP Package Version"
           command: |
             source $BASH_ENV
-            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | jq -r '.result.SubscriberPackageVersionId')
+            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | /usr/bin/jq -r '.result.SubscriberPackageVersionId')
 
             echo "Package Version ID: $PACKAGE_VERSION_ID"
             echo "export PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
