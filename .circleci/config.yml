@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: circleci/node:18 # Use CircleCI's official image
+      - image: node:18 # Use CircleCI's official image
     working_directory: ~/project
 
 jobs:
