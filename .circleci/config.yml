@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: cimg/node:18.17 # CircleCI-maintained image with better package support
+      - image: cimg/node:18.17 # CircleCI-maintained Node.js image
     working_directory: ~/project
 
 jobs:
@@ -19,14 +19,16 @@ jobs:
             sudo apt-get update && sudo apt-get install -y jq
             jq --version  # Verify jq installation
 
-      # Install Salesforce CLI correctly
+      # Install Salesforce CLI without requiring root access
       - run:
           name: "Install Salesforce CLI"
           command: |
-            npm install --global @salesforce/cli
+            mkdir -p ~/.npm-global
+            npm config set prefix '~/.npm-global'
+            export PATH=~/.npm-global/bin:$PATH
             echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
-            echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
+            npm install @salesforce/cli --global
             sf update
             sf --version  # Validate installation
 
@@ -38,57 +40,54 @@ jobs:
             sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
             sf org list
 
-      # Create a new Scratch Org
+      # Create a new scratch org
       - run:
           name: "Create Scratch Org"
-          command: sf org create scratch --definition-file config/project-scratch-def.json --set-default --duration-days 1 --alias ScratchOrg
+          command: |
+            sf org create scratch --set-default --definition-file config/project-scratch-def.json --duration-days 7 --alias MyScratchOrg
 
-      # Push metadata to Scratch Org
+      # Push source code to scratch org
       - run:
           name: "Push Source to Scratch Org"
-          command: sf project deploy start --source-dir force-app
+          command: |
+            sf project deploy start --target-org MyScratchOrg
 
-      # Run Apex tests with Code Coverage
+      # Run Apex tests in scratch org
       - run:
           name: "Run Apex Tests"
-          command: sf apex run test --code-coverage --result-format human
-
-      # Fetch or Create Package Dynamically
-      - run:
-          name: "Fetch or Create 2GP Package"
           command: |
-            PACKAGE_NAME="MySalesforcePackage123"  # Replace with your package name
-            PACKAGE_TYPE="Managed"  # Change to "Unlocked" if needed
+            sf apex run test --target-org MyScratchOrg --code-coverage --result-format human
 
-            # Try fetching an existing package ID
-            PACKAGE_ID=$(sf package list --json | /usr/bin/jq -r --arg NAME "$PACKAGE_NAME" '.result[] | select(.Name == $NAME) | .Id')
+      # Delete scratch org after job is done
+      - run:
+          name: "Delete Scratch Org"
+          command: |
+            sf org delete scratch --target-org MyScratchOrg --no-prompt
 
-            # If the package doesn't exist, create it
-            if [ -z "$PACKAGE_ID" ]; then
-              echo "Package does not exist. Creating..."
-              PACKAGE_ID=$(sf package create --name "$PACKAGE_NAME" --description "2GP package for deployment" --package-type "$PACKAGE_TYPE" --path force-app --target-dev-hub ScratchOrg --json | /usr/bin/jq -r '.result.Id')
-            fi
+  create-2gp-package:
+    executor: salesforce-executor
+    steps:
+      - checkout
 
-            echo "Using Package ID: $PACKAGE_ID"
-            echo "export PACKAGE_ID=$PACKAGE_ID" >> $BASH_ENV
+      # Authenticate with Dev Hub
+      - run:
+          name: "Authenticate with Dev Hub"
+          command: |
+            echo $SF_AUTH_URL > sfdx_auth.txt
+            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            sf org list
 
-      # Create a new package version dynamically
+      # Create Package Version
       - run:
           name: "Create 2GP Package Version"
           command: |
-            source $BASH_ENV
-            PACKAGE_VERSION_ID=$(sf package version create --package $PACKAGE_ID --installation-key-bypass --wait 10 --json | /usr/bin/jq -r '.result.SubscriberPackageVersionId')
-
-            echo "Package Version ID: $PACKAGE_VERSION_ID"
-            echo "export PACKAGE_VERSION_ID=$PACKAGE_VERSION_ID" >> $BASH_ENV
-
-      # Delete the Scratch Org after tests (Cleanup)
-      - run:
-          name: "Delete Scratch Org"
-          command: sf org delete scratch --target-org ScratchOrg --no-prompt
+            sf package version create --package "MyPackage" --installation-key-bypass --wait 10 --target-dev-hub $SF_DEV_HUB --branch main
 
 workflows:
   version: 2
-  ci_pipeline:
+  salesforce-deployment:
     jobs:
       - setup-scratch-org
+      - create-2gp-package:
+          requires:
+            - setup-scratch-org
