@@ -7,38 +7,39 @@ executors:
     working_directory: ~/project
 
 jobs:
+  authenticate-dev-hub:
+    executor: salesforce-executor
+    steps:
+      - checkout
+      - run:
+          name: "Authenticate Dev Hub"
+          command: |
+            if [ -z "$SF_AUTH_URL" ]; then
+              echo "SF_AUTH_URL is not set. Exiting..."
+              exit 1
+            fi
+            echo $SF_AUTH_URL > authfile.json
+            sf org login sfdx-url --set-default-dev-hub --json --sfdx-url-file authfile.json
+
   create-package:
     executor: salesforce-executor
     steps:
       - checkout
-
-      # Install Salesforce CLI
-      - run:
-          name: "Install Salesforce CLI"
-          command: |
-            npm install --global @salesforce/cli
-
-      # Authenticate Dev Hub (if not already authenticated)
-      - run:
-          name: "Authenticate Dev Hub"
-          command: |
-            echo $SF_AUTH_URL > authfile.json
-            sf org login sfdx-url --set-default-dev-hub --json --sfdx-url-file authfile.json
-
-      # Create a package
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHubAlias
+            sf package create --name DemoNilamPro123 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
-      # Create a package version
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamPro4 --installation-key-bypass --wait 10 --code-coverage
+            sf package version create --package DemoNilamPro123 --installation-key-bypass --wait 10 --code-coverage
 
 workflows:
   version: 2
   ci_pipeline:
     jobs:
-      - create-package
+      - authenticate-dev-hub
+      - create-package:
+          requires:
+            - authenticate-dev-hub
