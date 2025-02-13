@@ -41,6 +41,18 @@ jobs:
           name: "Push Source to Scratch Org"
           command: sf project deploy start --source-dir force-app
 
+      # Create a package version
+      - run:
+          name: "Create Package Version"
+          command: |
+            sf package version create --package DemoNilamPro4 --installation-key-bypass --wait 10 --code-coverage
+
+      # Install package in the scratch org
+      - run:
+          name: "Install Package Version"
+          command: |
+            sf package install --package 04tQy00000057nFIAQ --target-org ScratchOrg --wait 10 --no-prompt
+
       # Run Apex tests with Code Coverage
       - run:
           name: "Run Apex Tests"
