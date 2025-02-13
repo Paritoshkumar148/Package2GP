@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: node:18 # Use a stable Node.js version
+      - image: salesforce/salesforcedx:latest # Use an official Salesforce CLI image
     working_directory: ~/project
 
 jobs:
@@ -11,11 +11,6 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
-      - run:
-          name: "Install Salesforce CLI"
-          command: |
-            npm install --global @salesforce/cli
-            sf --version
       - run:
           name: "Authenticate Dev Hub"
           command: |
@@ -31,14 +26,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Install Salesforce CLI"
-          command: |
-            npm install --global @salesforce/cli
-            sf --version
-      - run:
           name: "Create Package"
           command: |
             sf package create --name DemoNilamPro4 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
+
       - run:
           name: "Create Package Version"
           command: |
