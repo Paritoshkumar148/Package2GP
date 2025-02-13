@@ -3,15 +3,16 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: cimg/node:18.16
+      - image: node:18 # Use CircleCI's official image
     working_directory: ~/project
 
 jobs:
-  setup:
+  create-package:
     executor: salesforce-executor
     steps:
       - checkout
-      # Install the new Salesforce CLI correctly
+
+      # Install Salesforce CLI
       - run:
           name: "Install Salesforce CLI"
           command: |
@@ -22,83 +23,31 @@ jobs:
             sf update
             sf --version  # Validate installation
 
-      # Authenticate using the SFDX_URL from CircleCI Environment Variables
+      # Authenticate Salesforce Dev Hub
       - run:
-          name: "Authenticate with Salesforce"
+          name: "Authenticate Dev Hub"
           command: |
-            echo $SF_AUTH_URL > sfdx_auth.txt
-            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            echo $SF_AUTH_URL > authfile
+            sf org login sfdx-url -f authfile --set-default-dev-hub --alias MyDevHub
             sf org list
 
-  create-package:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+      # Set correct alias mapping (if needed)
       - run:
-          name: Check if Package Exists
+          name: "Ensure Alias Mapping"
           command: |
-            PACKAGE_NAME="DemoNilamProSuper123"
-            PACKAGE_ID=$(sf package list --json | jq -r ".result[] | select(.Name==\"$PACKAGE_NAME\") | .Id")
+            sf alias set MyDevHub=devhubenable@paritosh.com
+            sf alias list  # Verify aliases
 
-            if [[ -z "$PACKAGE_ID" ]]; then
-              echo "Package does not exist. Creating package..."
-              PACKAGE_ID=$(sf package create -n "$PACKAGE_NAME" -t Managed -r force-app -v DevHub --json | jq -r '.result.id')
-              echo "Package created with ID: $PACKAGE_ID"
-            else
-              echo "Package already exists with ID: $PACKAGE_ID"
-            fi
-
-            # Update sfdx-project.json dynamically12345678
-            jq --arg name "$PACKAGE_NAME" --arg id "$PACKAGE_ID" '.packageAliases[$name] = $id' sfdx-project.json > temp.json && mv temp.json sfdx-project.json
-
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
-
-  create-package-version:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
+      # Create a package
       - run:
-          name: Create Package Version
+          name: "Create Package"
           command: |
-            PACKAGE_NAME="DemoNilamProSuper123"
-            PACKAGE_ID=$(jq -r ".packageAliases[\"$PACKAGE_NAME\"]" sfdx-project.json)
+            sf package create --name DemoNilamSuper456 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
-            if [[ -z "$PACKAGE_ID" ]]; then
-              echo "Error: Package ID not found in sfdx-project.json. Exiting..."
-              exit 1
-            fi
-
-            sf package version create -p "$PACKAGE_NAME" -d force-app -v DevHub --wait 10 --json
-
-  push-changes:
-    executor: salesforce-executor
-    steps:
-      - attach_workspace:
-          at: ~/project
-      - run:
-          name: Push Updated sfdx-project.json to GitHub
-          command: |
-            git config --global user.email "your-email@example.com"
-            git config --global user.name "CircleCI Bot"
-            git add sfdx-project.json
-            git commit -m "Updated sfdx-project.json with package ID"
-            git push origin main
+      # Create a package version
 
 workflows:
   version: 2
-  salesforce-ci:
+  ci_pipeline:
     jobs:
-      - setup
-      - create-package:
-          requires:
-            - setup
-      - create-package-version:
-          requires:
-            - create-package
-      - push-changes:
-          requires:
-            - create-package-version
+      - create-package
