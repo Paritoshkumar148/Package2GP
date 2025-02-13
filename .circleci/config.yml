@@ -11,17 +11,24 @@ jobs:
     executor: salesforce-executor
     steps:
       - checkout
+      # Install the new Salesforce CLI correctly
       - run:
-          name: Install Salesforce CLI
+          name: "Install Salesforce CLI"
           command: |
-            npm install --global sfdx-cli
-            sf --version
+            npm install --global @salesforce/cli
+            echo 'export PATH=~/.npm-global/bin:$PATH' >> $BASH_ENV
+            echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
+            source $BASH_ENV
+            sf update
+            sf --version  # Validate installation
+
+      # Authenticate using the SFDX_URL from CircleCI Environment Variables
       - run:
-          name: Authenticate DevHub
-          command: echo $SF_AUTH_URL | sf org login sfdx-url --set-default-dev-hub --json
-      - persist_to_workspace:
-          root: ~/project
-          paths: .
+          name: "Authenticate with Salesforce"
+          command: |
+            echo $SF_AUTH_URL > sfdx_auth.txt
+            sf org login sfdx-url --sfdx-url-file sfdx_auth.txt --set-default-dev-hub
+            sf org list
 
   create-package:
     executor: salesforce-executor
