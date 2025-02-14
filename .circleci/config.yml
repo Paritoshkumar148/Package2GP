@@ -42,13 +42,13 @@ jobs:
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamSuper30 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
+            sf package create --name DemoNilamSuper333 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
       # Create a package version
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamSuper30 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
+            sf package version create --package DemoNilamSuper333 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
 
   create-scratch-org:
     executor: salesforce-executor
@@ -85,7 +85,7 @@ jobs:
       - run:
           name: "Install Package in Scratch Org"
           command: |
-            sf package install --package DemoNilamSuper30 --wait 10 --publish-wait 10 --target-org MyScratchOrg --noprompt
+            sf package install --package DemoNilamSuper333 --wait 10 --publish-wait 10 --target-org MyScratchOrg --noprompt
             sf org display --target-org MyScratchOrg  # Display scratch org details
 
 workflows:
