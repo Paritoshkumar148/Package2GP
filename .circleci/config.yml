@@ -3,7 +3,7 @@ version: 2.1
 executors:
   salesforce-executor:
     docker:
-      - image: node:18 # Use CircleCI's official image
+      - image: node:18
     working_directory: ~/project
 
 jobs:
@@ -21,43 +21,43 @@ jobs:
             echo 'export PATH=~/.local/share/sf/bin:$PATH' >> $BASH_ENV
             source $BASH_ENV
             sf update
-            sf --version  # Validate installation
+            sf --version
 
-      # Authenticate Salesforce Dev Hub
+      # Install jq (JSON processor)
+      - run:
+          name: "Install jq"
+          command: |
+            apt-get update && apt-get install -y jq
+            jq --version  # Verify installation
+
+      # Authenticate Dev Hub
       - run:
           name: "Authenticate Dev Hub"
           command: |
             echo $SF_AUTH_URL > authfile
             sf org login sfdx-url -f authfile --set-default-dev-hub --alias MyDevHub
-            sf org list  # Verify authentication
-
-      # Set correct alias mapping (if needed)
-      - run:
-          name: "Ensure Alias Mapping"
-          command: |
-            sf alias set MyDevHub=devhubenable@paritosh.com
-            sf alias list  # Verify aliases
+            sf org list
 
       # Create a package
       - run:
           name: "Create Package"
           command: |
-            sf package create --name DemoNilamSuper312 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
+            sf package create --name DemoNilamSuper39 --description "Demo Package" --packagetype Unlocked --path force-app --target-dev-hub MyDevHub
 
       # Create a package version
       - run:
           name: "Create Package Version"
           command: |
-            sf package version create --package DemoNilamSuper312 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
+            sf package version create --package DemoNilamSuper39 --installation-key-bypass --wait 10 --code-coverage --target-dev-hub MyDevHub
 
-      # Create a Scratch Org
+      # Create Scratch Org
       - run:
           name: "Create Scratch Org"
           command: |
             sf org create scratch --definition-file config/project-scratch-def.json --set-default --alias MyScratchOrg --target-dev-hub MyDevHub
-            sf org list  # Display list of orgs
+            sf org list
 
-      # Install the package in Scratch Org
+      # Install package in Scratch Org
       - run:
           name: "Install Package in Scratch Org"
           command: |
